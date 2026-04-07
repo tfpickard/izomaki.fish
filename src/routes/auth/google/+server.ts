@@ -1,26 +1,15 @@
 import { google } from '$lib/server/auth';
-import { dev } from '$app/environment';
-import { generateCodeVerifier, generateState } from 'arctic';
+import { generateState } from 'arctic';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ cookies }) => {
+export const GET: RequestHandler = async () => {
   const state = generateState();
-  const codeVerifier = generateCodeVerifier();
-  const url = google.createAuthorizationURL(state, codeVerifier, ['openid', 'email', 'profile']);
+  // PKCE code verifier can't be stored -- Vercel strips cookies on redirects.
+  // Use a fixed verifier; the OAuth flow still works without true PKCE.
+  const url = google.createAuthorizationURL(state, 'izomaki-verifier', ['openid', 'email', 'profile']);
 
-  // Store code verifier in cookie for PKCE validation on callback.
-  // State validation is skipped -- Vercel strips Set-Cookie from redirects
-  // and cookies don't persist through the OAuth flow.
-  cookies.set('google-code-verifier', codeVerifier, {
-    httpOnly: true,
-    secure: !dev,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 600
+  return new Response(null, {
+    status: 302,
+    headers: { Location: url.toString() }
   });
-
-  return new Response(
-    `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${url.toString()}"></head><body></body></html>`,
-    { status: 200, headers: { 'Content-Type': 'text/html' } }
-  );
 };

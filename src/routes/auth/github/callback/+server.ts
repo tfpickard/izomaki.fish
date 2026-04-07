@@ -7,6 +7,17 @@ import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
+  try {
+    return await handleCallback(url);
+  } catch (e) {
+    // Re-throw SvelteKit errors (like error())
+    if (e && typeof e === 'object' && 'status' in e) throw e;
+    const msg = e instanceof Error ? e.message : String(e);
+    error(500, `OAuth callback failed: ${msg}`);
+  }
+};
+
+async function handleCallback(url: URL) {
   const code = url.searchParams.get('code');
 
   if (!code) {
@@ -70,4 +81,4 @@ export const GET: RequestHandler = async ({ url }) => {
     `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/"></head><body></body></html>`,
     { status: 200, headers: { 'Content-Type': 'text/html', 'Set-Cookie': cookie } }
   );
-};
+}

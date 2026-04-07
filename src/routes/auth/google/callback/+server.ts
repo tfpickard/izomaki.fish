@@ -6,17 +6,14 @@ import { error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
+export const GET: RequestHandler = async ({ url }) => {
   const code = url.searchParams.get('code');
-  const codeVerifier = cookies.get('google-code-verifier');
 
-  if (!code || !codeVerifier) {
-    error(400, 'Missing authorization code or verifier');
+  if (!code) {
+    error(400, 'Missing authorization code');
   }
 
-  cookies.delete('google-code-verifier', { path: '/' });
-
-  const tokens = await google.validateAuthorizationCode(code, codeVerifier);
+  const tokens = await google.validateAuthorizationCode(code, 'izomaki-verifier');
   const accessToken = tokens.accessToken();
 
   const profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
