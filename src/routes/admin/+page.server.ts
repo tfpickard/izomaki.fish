@@ -9,6 +9,14 @@ export const load: PageServerLoad = async ({ parent }) => {
     redirect(302, '/');
   }
 
+  const { rows: userRows } = await sql`
+    SELECT provider, provider_id FROM users WHERE id = ${user.id}
+  `;
+
+  if (userRows.length === 0 || !(userRows[0].provider === 'github' && userRows[0].provider_id === '45548991')) {
+    redirect(302, '/');
+  }
+
   const { rows: creatureRows } = await sql`
     SELECT id, created_at, generation_count, last_generated_at, next_generation_at
     FROM creatures
