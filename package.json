@@ -26,6 +26,7 @@
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.82.0",
+		"@vercel/analytics": "^2.0.1",
 		"@vercel/postgres": "^0.10.0",
 		"arctic": "^3.7.0",
 		"oslo": "^1.2.1"
