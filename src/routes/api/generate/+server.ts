@@ -1,3 +1,4 @@
+import { env } from '$env/dynamic/private';
 import { sql } from '$lib/server/db';
 import { verifySessionToken, COOKIE_NAME } from '$lib/server/session';
 import { generateEvolvedFrame } from '$lib/server/generation';
@@ -16,6 +17,13 @@ export const POST: RequestHandler = async ({ cookies }) => {
   if (!session) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  if (session.userId !== env.ADMIN_USER_ID) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
       headers: { 'Content-Type': 'application/json' }
     });
   }
