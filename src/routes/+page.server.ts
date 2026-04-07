@@ -1,12 +1,14 @@
 import { sql } from '$lib/server/db';
 import { generateInitFrame, generateEvolvedFrame } from '$lib/server/generation';
+import { updatePresence } from '$lib/server/presence';
+import { getOrAssignNeighbors } from '$lib/server/neighbors';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user } = await parent();
 
   if (!user) {
-    return { creature: null, frames: [] };
+    return { creature: null, frames: [], neighbors: [] };
   }
 
   const { rows: creatureRows } = await sql`
@@ -17,7 +19,7 @@ export const load: PageServerLoad = async ({ parent }) => {
   `;
 
   if (creatureRows.length === 0) {
-    return { creature: null, frames: [] };
+    return { creature: null, frames: [], neighbors: [] };
   }
 
   const creature = creatureRows[0];
@@ -36,5 +38,8 @@ export const load: PageServerLoad = async ({ parent }) => {
     generateEvolvedFrame(creature.id).catch(() => {});
   }
 
-  return { creature, frames: frameRows };
+  await updatePresence(user.id);
+  const neighbors = await getOrAssignNeighbors(user.id);
+
+  return { creature, frames: frameRows, neighbors };
 };
