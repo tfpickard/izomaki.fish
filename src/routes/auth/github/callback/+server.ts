@@ -2,20 +2,16 @@ import { github } from '$lib/server/auth';
 import { sql } from '$lib/server/db';
 import { createSessionToken, COOKIE_NAME } from '$lib/server/session';
 import { generateInitFrame } from '$lib/server/generation';
-import { redirect, error } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
+export const GET: RequestHandler = async ({ url }) => {
   const code = url.searchParams.get('code');
-  const state = url.searchParams.get('state');
-  const storedState = cookies.get('github-oauth-state');
 
-  if (!code || !state || state !== storedState) {
-    error(400, `Invalid OAuth state (code=${!!code}, state=${!!state}, storedState=${!!storedState}, match=${state === storedState})`);
+  if (!code) {
+    error(400, 'Missing authorization code');
   }
-
-  cookies.delete('github-oauth-state', { path: '/' });
 
   const tokens = await github.validateAuthorizationCode(code);
   const accessToken = tokens.accessToken();
@@ -66,13 +62,12 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   }
 
   const token = createSessionToken(userId);
-  cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: !dev,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 30 * 24 * 60 * 60
-  });
+  const secure = dev ? '' : ' Secure;';
+  const maxAge = 30 * 24 * 60 * 60;
+  const cookie = `${COOKIE_NAME}=${token}; Path=/; HttpOnly;${secure} SameSite=Lax; Max-Age=${maxAge}`;
 
-  redirect(302, '/');
+  return new Response(
+    `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/"></head><body></body></html>`,
+    { status: 200, headers: { 'Content-Type': 'text/html', 'Set-Cookie': cookie } }
+  );
 };
