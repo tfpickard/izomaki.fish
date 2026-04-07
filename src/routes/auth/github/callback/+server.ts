@@ -62,14 +62,21 @@ async function handleCallback(url: URL) {
       INSERT INTO users (id, provider, provider_id, email, display_name)
       VALUES (${userId}, 'github', ${providerId}, ${email}, ${displayName})
     `;
+  }
 
+  // ensure creature exists (may be missing from a previous partial signup)
+  const { rows: creatureRows } = await sql`
+    SELECT id FROM creatures WHERE user_id = ${userId}
+  `;
+
+  if (creatureRows.length === 0) {
     const creatureId = crypto.randomUUID();
     await sql`
       INSERT INTO creatures (id, user_id)
       VALUES (${creatureId}, ${userId})
     `;
 
-    await generateInitFrame(creatureId);
+    generateInitFrame(creatureId).catch(() => {});
   }
 
   const token = createSessionToken(userId);

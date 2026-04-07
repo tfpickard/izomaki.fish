@@ -48,14 +48,20 @@ export const GET: RequestHandler = async ({ url }) => {
       INSERT INTO users (id, provider, provider_id, email, display_name)
       VALUES (${userId}, 'google', ${providerId}, ${email}, ${displayName})
     `;
+  }
 
+  const { rows: creatureRows } = await sql`
+    SELECT id FROM creatures WHERE user_id = ${userId}
+  `;
+
+  if (creatureRows.length === 0) {
     const creatureId = crypto.randomUUID();
     await sql`
       INSERT INTO creatures (id, user_id)
       VALUES (${creatureId}, ${userId})
     `;
 
-    await generateInitFrame(creatureId);
+    generateInitFrame(creatureId).catch(() => {});
   }
 
   const token = createSessionToken(userId);
