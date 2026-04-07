@@ -32,11 +32,11 @@ export const POST: RequestHandler = async ({ cookies }) => {
   }
 
   const creature = rows[0];
-  const fiveMinutes = 5 * 60 * 1000;
+  const minInterval = 30 * 1000;
 
   if (creature.last_generated_at) {
     const lastGenTime = new Date(creature.last_generated_at).getTime();
-    if (Date.now() - lastGenTime < fiveMinutes) {
+    if (Date.now() - lastGenTime < minInterval) {
       return new Response(JSON.stringify({ error: 'Rate limited' }), {
         status: 429,
         headers: { 'Content-Type': 'application/json' }
