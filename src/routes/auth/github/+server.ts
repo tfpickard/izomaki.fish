@@ -1,5 +1,6 @@
 import { github } from '$lib/server/auth';
 import { redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies }) => {
@@ -9,7 +10,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 
   cookies.set('github-oauth-state', state, {
     httpOnly: true,
-    secure: true,
+    secure: !dev,
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 10
