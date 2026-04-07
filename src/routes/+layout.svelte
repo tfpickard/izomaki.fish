@@ -1,6 +1,6 @@
 <script lang="ts">
   import '../app.css';
-  import { Analytics } from '@vercel/analytics/svelte';
+  import { Analytics } from '@vercel/analytics/sveltekit';
   let { children } = $props();
 </script>
 
