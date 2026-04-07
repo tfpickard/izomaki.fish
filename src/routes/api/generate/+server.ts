@@ -1,3 +1,4 @@
+import { env } from '$env/dynamic/private';
 import { sql } from '$lib/server/db';
 import { verifySessionToken, COOKIE_NAME } from '$lib/server/session';
 import { generateEvolvedFrame } from '$lib/server/generation';
@@ -20,6 +21,13 @@ export const POST: RequestHandler = async ({ cookies }) => {
     });
   }
 
+  if (session.userId !== env.ADMIN_USER_ID) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   const { rows } = await sql`
     SELECT id, last_generated_at FROM creatures WHERE user_id = ${session.userId}
   `;
@@ -32,11 +40,11 @@ export const POST: RequestHandler = async ({ cookies }) => {
   }
 
   const creature = rows[0];
-  const fiveMinutes = 5 * 60 * 1000;
+  const minInterval = 30 * 1000;
 
   if (creature.last_generated_at) {
     const lastGenTime = new Date(creature.last_generated_at).getTime();
-    if (Date.now() - lastGenTime < fiveMinutes) {
+    if (Date.now() - lastGenTime < minInterval) {
       return new Response(JSON.stringify({ error: 'Rate limited' }), {
         status: 429,
         headers: { 'Content-Type': 'application/json' }
