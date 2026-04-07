@@ -10,9 +10,12 @@ export const GET: RequestHandler = async () => {
 
   const secure = dev ? '' : ' Secure;';
   const headers = new Headers();
-  headers.set('Location', url.toString());
+  headers.set('Content-Type', 'text/html');
   headers.append('Set-Cookie', `google-oauth-state=${state}; Path=/; HttpOnly;${secure} SameSite=Lax; Max-Age=600`);
   headers.append('Set-Cookie', `google-code-verifier=${codeVerifier}; Path=/; HttpOnly;${secure} SameSite=Lax; Max-Age=600`);
 
-  return new Response(null, { status: 302, headers });
+  return new Response(
+    `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${url.toString()}"></head><body></body></html>`,
+    { status: 200, headers }
+  );
 };

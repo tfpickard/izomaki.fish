@@ -9,11 +9,14 @@ export const GET: RequestHandler = async () => {
   const secure = dev ? '' : ' Secure;';
   const cookie = `github-oauth-state=${state}; Path=/; HttpOnly;${secure} SameSite=Lax; Max-Age=600`;
 
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: url.toString(),
-      'Set-Cookie': cookie
+  return new Response(
+    `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${url.toString()}"></head><body></body></html>`,
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html',
+        'Set-Cookie': cookie
+      }
     }
-  });
+  );
 };
