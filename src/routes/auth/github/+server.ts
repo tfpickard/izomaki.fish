@@ -1,20 +1,19 @@
 import { github } from '$lib/server/auth';
-import { redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ cookies }) => {
+export const GET: RequestHandler = async () => {
   const state = crypto.randomUUID();
-
   const url = github.createAuthorizationURL(state, []);
 
-  cookies.set('github-oauth-state', state, {
-    httpOnly: true,
-    secure: !dev,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 10
-  });
+  const secure = dev ? '' : ' Secure;';
+  const cookie = `github-oauth-state=${state}; Path=/; HttpOnly;${secure} SameSite=Lax; Max-Age=600`;
 
-  redirect(302, url.toString());
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: url.toString(),
+      'Set-Cookie': cookie
+    }
+  });
 };
