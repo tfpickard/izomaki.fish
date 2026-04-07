@@ -1,4 +1,5 @@
 import { sql } from '$lib/server/db';
+import { generateEvolvedFrame } from '$lib/server/generation';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -20,6 +21,12 @@ export const load: PageServerLoad = async ({ parent }) => {
   }
 
   const creature = creatureRows[0];
+
+  // Trigger scheduled generation on page load if due.
+  // Replaces Vercel cron -- generation happens when the creature is visited.
+  if (creature.next_generation_at && new Date(creature.next_generation_at) <= new Date()) {
+    generateEvolvedFrame(creature.id).catch(() => {});
+  }
 
   const { rows: frameRows } = await sql`
     SELECT id, ascii, weights, generation_index, created_at
