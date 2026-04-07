@@ -17,7 +17,7 @@ Use the same spacing convention as the original frame (dots as visible spacers i
 
 export async function generateInitFrame(creatureId: string): Promise<void> {
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [{ role: 'user', content: INIT_PROMPT }],
     system: 'Respond with only ASCII art. No explanation. No markdown code fences. No preamble. Just the ASCII art.'
@@ -58,7 +58,7 @@ export async function generateEvolvedFrame(creatureId: string): Promise<void> {
   const prompt = EVOLVE_PROMPT_TEMPLATE.replace('{ascii}', parent.ascii);
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [{ role: 'user', content: prompt }],
     system: 'Respond with only ASCII art. No explanation. No markdown code fences. No preamble. Just the ASCII art.'
