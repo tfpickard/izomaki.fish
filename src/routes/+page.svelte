@@ -2,10 +2,8 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
 
-  import Creature from '$lib/components/Creature.svelte';
-  import AdminPanel from '$lib/components/AdminPanel.svelte';
+  import CreatureField from '$lib/components/CreatureField.svelte';
   import LoginPage from '$lib/components/LoginPage.svelte';
-  import AttractorVisualization from '$lib/components/AttractorVisualization.svelte';
 
   import { getCelestialState } from '$lib/engine/celestial';
   import { stepAttractor, normalizeAttractor } from '$lib/engine/attractor';
@@ -17,12 +15,14 @@
   import { celestialState } from '$lib/stores/attractor';
 
   import type { Frame } from '$lib/engine/types';
+  import type { NeighborCreature } from '$lib/server/neighbors';
 
   interface Props {
     data: {
       user: { id: string } | null;
       creature: { id: string } | null;
       frames: { id: string; ascii: string; weights: unknown; generation_index: number; created_at: string }[];
+      neighbors: NeighborCreature[];
     };
   }
 
@@ -30,6 +30,10 @@
 
   const startTime = Date.now();
   let lastExperienceLog = Date.now();
+
+  let neighbors: NeighborCreature[] = $state(data.neighbors ?? []);
+  let active = $state(0);
+  let total = $state(0);
 
   $effect(() => {
     if (data.frames.length > 0) {
@@ -85,18 +89,37 @@
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    // Presence heartbeat
+    const presenceInterval = setInterval(() => {
+      fetch('/api/presence', { method: 'POST' })
+        .then(r => r.json())
+        .then((body: { active: number; total: number }) => {
+          active = body.active;
+          total = body.total;
+        })
+        .catch(() => {});
+    }, 60000);
+
+    // Neighbor refresh every 30 minutes
+    const neighborInterval = setInterval(() => {
+      fetch('/api/neighbors')
+        .then(r => r.json())
+        .then((body: { neighbors: NeighborCreature[] }) => {
+          neighbors = body.neighbors;
+        })
+        .catch(() => {});
+    }, 30 * 60 * 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(presenceInterval);
+      clearInterval(neighborInterval);
+    };
   });
 </script>
 
 {#if !data.user}
   <LoginPage />
 {:else}
-  <div class="relative w-screen h-screen overflow-hidden">
-    <AttractorVisualization />
-    <div class="relative w-full h-full" style="z-index: 1;">
-      <Creature />
-      <AdminPanel />
-    </div>
-  </div>
+  <CreatureField {neighbors} {active} {total} />
 {/if}
