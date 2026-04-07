@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const storedState = cookies.get('github-oauth-state');
 
   if (!code || !state || state !== storedState) {
-    error(400, 'Invalid OAuth state');
+    error(400, `Invalid OAuth state (code=${!!code}, state=${!!state}, storedState=${!!storedState}, match=${state === storedState})`);
   }
 
   cookies.delete('github-oauth-state', { path: '/' });
