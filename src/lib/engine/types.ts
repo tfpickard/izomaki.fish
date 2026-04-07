@@ -46,6 +46,16 @@ export const PARAMETER_KEYS: (keyof StateVector)[] = [
   'agitation', 'hunger', 'presence'
 ];
 
+export interface ExperienceSummary {
+  total_logs: number;
+  avg_x: number;
+  avg_y: number;
+  avg_z: number;
+  std_x: number;
+  std_y: number;
+  std_z: number;
+}
+
 export const DEFAULT_TRAJECTORIES: ParameterTrajectories = {
   wakefulness:  { frequency: 0.03, amplitude: 0.4,  phase: 0,          noise: 0.02 },
   contentment:  { frequency: 0.05, amplitude: 0.3,  phase: Math.PI/4,  noise: 0.03 },
