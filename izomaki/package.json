@@ -9,7 +9,8 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"migrate": "node --env-file=.env scripts/migrate.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
@@ -22,5 +23,11 @@
 		"tailwindcss": "^4.2.2",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1"
+	},
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.82.0",
+		"@vercel/postgres": "^0.10.0",
+		"arctic": "^3.7.0",
+		"oslo": "^1.2.1"
 	}
 }
