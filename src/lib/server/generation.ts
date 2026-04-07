@@ -43,7 +43,7 @@ export async function generateInitFrame(creatureId: string): Promise<void> {
 
 export async function generateEvolvedFrame(creatureId: string): Promise<void> {
   const { rows } = await sql`
-    SELECT id, ascii FROM frames
+    SELECT id, ascii, weights FROM frames
     WHERE creature_id = ${creatureId}
     ORDER BY RANDOM()
     LIMIT 1
@@ -116,7 +116,7 @@ function extractText(response: Anthropic.Message): string {
     .filter((block): block is Anthropic.TextBlock => block.type === 'text')
     .map(block => block.text)
     .join('\n')
-    .trim();
+    .replace(/^\n+|\n+$/g, '');
 }
 
 function generateRandomWeights(): StateVector {

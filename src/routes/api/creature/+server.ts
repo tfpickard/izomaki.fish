@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 
   const { rows } = await sql`
     SELECT c.id, c.created_at, c.generation_count, c.next_generation_at,
-           COUNT(f.id) as frame_count
+           COUNT(f.id)::int as frame_count
     FROM creatures c
     LEFT JOIN frames f ON f.creature_id = c.id
     WHERE c.user_id = ${session.userId}

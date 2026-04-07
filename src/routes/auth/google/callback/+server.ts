@@ -3,6 +3,7 @@ import { sql } from '$lib/server/db';
 import { createSessionToken, COOKIE_NAME } from '$lib/server/session';
 import { generateInitFrame } from '$lib/server/generation';
 import { redirect, error } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
@@ -25,7 +26,15 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
 
+  if (!profileResponse.ok) {
+    error(502, 'Failed to fetch Google profile');
+  }
+
   const profile = await profileResponse.json();
+
+  if (!profile.sub) {
+    error(502, 'Invalid Google profile response');
+  }
 
   const providerId = String(profile.sub);
   const email = profile.email ?? null;
@@ -58,7 +67,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const token = createSessionToken(userId);
   cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: true,
+    secure: !dev,
     sameSite: 'lax',
     path: '/',
     maxAge: 30 * 24 * 60 * 60

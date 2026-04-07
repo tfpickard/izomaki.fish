@@ -1,12 +1,11 @@
 <script lang="ts">
   interface Props {
-    generationCount: number;
     lastGeneratedAt: string | null;
     nextGenerationAt: string | null;
     frames: { created_at: string }[];
   }
 
-  let { generationCount, lastGeneratedAt, nextGenerationAt, frames }: Props = $props();
+  let { lastGeneratedAt, nextGenerationAt, frames }: Props = $props();
 
   let now = $state(Date.now());
   let generating = $state(false);
@@ -55,7 +54,7 @@
 
 <div class="font-mono text-xs text-neutral-500 flex flex-col gap-2">
   <div class="flex gap-4">
-    <span>frames: {generationCount}</span>
+    <span>frames: {frames.length}</span>
     <span>last: {timeSince()} ago</span>
     <span>next: {timeUntil()}</span>
   </div>

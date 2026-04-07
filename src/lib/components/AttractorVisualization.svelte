@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { computeTrail, project } from '$lib/engine/visualization';
+  import { computeTrail, project, type TrailPoint } from '$lib/engine/visualization';
   import { attractorState } from '$lib/stores/creature';
   import { celestialState } from '$lib/stores/attractor';
 
@@ -14,15 +14,25 @@
     let rafId: number;
     const startTime = Date.now();
 
+    // Trail is recomputed at 2Hz, not every animation frame.
+    let trail: TrailPoint[] = [];
+    let lastTrailUpdate = 0;
+    const TRAIL_UPDATE_INTERVAL = 500;
+
     function draw() {
+      const now = Date.now();
       const width = canvas.width;
       const height = canvas.height;
-      ctx!.clearRect(0, 0, width, height);
 
-      const attractor = get(attractorState);
-      const celestial = get(celestialState);
-      const trail = computeTrail(attractor, celestial);
-      const time = Date.now() - startTime;
+      if (now - lastTrailUpdate >= TRAIL_UPDATE_INTERVAL) {
+        const attractor = get(attractorState);
+        const celestial = get(celestialState);
+        trail = computeTrail(attractor, celestial);
+        lastTrailUpdate = now;
+      }
+
+      ctx!.clearRect(0, 0, width, height);
+      const time = now - startTime;
 
       for (const point of trail) {
         const { x, y, opacity } = project(point, time, width, height);

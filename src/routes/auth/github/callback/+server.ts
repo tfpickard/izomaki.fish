@@ -3,6 +3,7 @@ import { sql } from '$lib/server/db';
 import { createSessionToken, COOKIE_NAME } from '$lib/server/session';
 import { generateInitFrame } from '$lib/server/generation';
 import { redirect, error } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
@@ -26,7 +27,15 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     }
   });
 
+  if (!profileResponse.ok) {
+    error(502, 'Failed to fetch GitHub profile');
+  }
+
   const profile = await profileResponse.json();
+
+  if (!profile.id) {
+    error(502, 'Invalid GitHub profile response');
+  }
 
   const providerId = String(profile.id);
   const email = profile.email ?? null;
@@ -59,7 +68,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const token = createSessionToken(userId);
   cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: true,
+    secure: !dev,
     sameSite: 'lax',
     path: '/',
     maxAge: 30 * 24 * 60 * 60

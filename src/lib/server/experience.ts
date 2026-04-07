@@ -27,16 +27,25 @@ export async function logExperience(
 export async function getExperienceSummary(creatureId: string): Promise<ExperienceSummary> {
   const { rows } = await sql`
     SELECT
-      COUNT(*) as total_logs,
-      AVG(attractor_x) as avg_x,
-      AVG(attractor_y) as avg_y,
-      AVG(attractor_z) as avg_z,
-      STDDEV(attractor_x) as std_x,
-      STDDEV(attractor_y) as std_y,
-      STDDEV(attractor_z) as std_z
+      COUNT(*)::int as total_logs,
+      COALESCE(AVG(attractor_x), 0) as avg_x,
+      COALESCE(AVG(attractor_y), 0) as avg_y,
+      COALESCE(AVG(attractor_z), 0) as avg_z,
+      COALESCE(STDDEV(attractor_x), 0) as std_x,
+      COALESCE(STDDEV(attractor_y), 0) as std_y,
+      COALESCE(STDDEV(attractor_z), 0) as std_z
     FROM experience_log
     WHERE creature_id = ${creatureId}
   `;
 
-  return rows[0] as ExperienceSummary;
+  const row = rows[0];
+  return {
+    total_logs: Number(row.total_logs),
+    avg_x: Number(row.avg_x),
+    avg_y: Number(row.avg_y),
+    avg_z: Number(row.avg_z),
+    std_x: Number(row.std_x),
+    std_y: Number(row.std_y),
+    std_z: Number(row.std_z)
+  };
 }
