@@ -15,7 +15,7 @@
   import { celestialState } from '$lib/stores/attractor';
 
   import type { Frame } from '$lib/engine/types';
-  import type { NeighborCreature } from '$lib/server/neighbors';
+  import type { NeighborCreature } from '$lib/types';
 
   interface Props {
     data: {
@@ -90,15 +90,16 @@
     }, 1000);
 
     // Presence heartbeat
-    const presenceInterval = setInterval(() => {
+    const refreshPresence = () => {
       fetch('/api/presence', { method: 'POST' })
-        .then(r => r.json())
-        .then((body: { active: number; total: number }) => {
-          active = body.active;
-          total = body.total;
+        .then(r => { if (r.ok) return r.json(); })
+        .then((body?: { active: number; total: number }) => {
+          if (body) { active = body.active; total = body.total; }
         })
         .catch(() => {});
-    }, 60000);
+    };
+    refreshPresence();
+    const presenceInterval = setInterval(refreshPresence, 60000);
 
     // Neighbor refresh every 30 minutes
     const neighborInterval = setInterval(() => {

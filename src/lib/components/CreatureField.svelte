@@ -5,7 +5,7 @@
   import NeighborCreature from '$lib/components/NeighborCreature.svelte';
   import PlatformPulse from '$lib/components/PlatformPulse.svelte';
 
-  import type { NeighborCreature as NeighborCreatureData } from '$lib/server/neighbors';
+  import type { NeighborCreature as NeighborCreatureData } from '$lib/types';
 
   interface Props {
     neighbors: NeighborCreatureData[];
@@ -26,7 +26,7 @@
   <AttractorVisualization />
   <div class="relative w-full h-full" style="z-index: 1;">
     <Creature />
-    {#each neighbors.slice(0, 3) as neighbor, i}
+    {#each neighbors.slice(0, 3) as neighbor, i (neighbor.creatureId)}
       <NeighborCreature
         frames={neighbor.frames}
         experience={neighbor.experience}

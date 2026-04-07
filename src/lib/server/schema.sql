@@ -49,6 +49,8 @@ CREATE INDEX idx_creatures_next_gen ON creatures(next_generation_at);
 
 ALTER TABLE creatures ADD COLUMN last_seen_at TIMESTAMP;
 ALTER TABLE creatures ADD COLUMN is_active BOOLEAN DEFAULT true;
+UPDATE creatures SET is_active = true WHERE is_active IS NULL;
+ALTER TABLE creatures ALTER COLUMN is_active SET NOT NULL;
 
 CREATE TABLE neighbors (
   id TEXT PRIMARY KEY,

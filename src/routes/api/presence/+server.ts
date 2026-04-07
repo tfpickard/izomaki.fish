@@ -1,13 +1,19 @@
-import { verifySessionToken } from '$lib/server/session';
+import { COOKIE_NAME, verifySessionToken } from '$lib/server/session';
 import { updatePresence, getActiveCreatureCount, getTotalCreatureCount } from '$lib/server/presence';
 import type { RequestHandler } from './$types';
 
+const unauthorized = () =>
+  new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    status: 401,
+    headers: { 'Content-Type': 'application/json' }
+  });
+
 export const POST: RequestHandler = async ({ cookies }) => {
-  const token = cookies.get('izomaki-session');
-  if (!token) return new Response('Unauthorized', { status: 401 });
+  const token = cookies.get(COOKIE_NAME);
+  if (!token) return unauthorized();
 
   const session = verifySessionToken(token);
-  if (!session) return new Response('Unauthorized', { status: 401 });
+  if (!session) return unauthorized();
 
   await updatePresence(session.userId);
 

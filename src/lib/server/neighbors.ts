@@ -1,14 +1,9 @@
 import { sql } from './db';
+import type { NeighborCreature } from '$lib/types';
+
+export type { NeighborCreature };
 
 const NEIGHBOR_COUNT = 3;
-const ROTATION_INTERVAL_MS = 4 * 60 * 60 * 1000;
-
-export interface NeighborCreature {
-  creatureId: string;
-  frames: { id: string; ascii: string; weights: unknown }[];
-  experience: unknown;
-  createdAt: string;
-}
 
 interface CreatureRow {
   id: string;
@@ -44,27 +39,15 @@ export async function getOrAssignNeighbors(userId: string): Promise<NeighborCrea
 
   const excludeIds = [...existingIds, ownCreature[0].id];
 
-  let candidates: CreatureRow[] = [];
-  if (excludeIds.length > 0) {
-    const { rows } = await sql`
-      SELECT id, user_id, created_at FROM creatures
-      WHERE id != ALL(${excludeIds})
-      AND is_active = true
-      AND last_seen_at > NOW() - INTERVAL '7 days'
-      ORDER BY RANDOM()
-      LIMIT ${needed}
-    `;
-    candidates = rows as CreatureRow[];
-  } else {
-    const { rows } = await sql`
-      SELECT id, user_id, created_at FROM creatures
-      WHERE is_active = true
-      AND last_seen_at > NOW() - INTERVAL '7 days'
-      ORDER BY RANDOM()
-      LIMIT ${needed}
-    `;
-    candidates = rows as CreatureRow[];
-  }
+  const { rows } = await sql`
+    SELECT id, user_id, created_at FROM creatures
+    WHERE id != ALL(${excludeIds})
+    AND is_active = true
+    AND last_seen_at > NOW() - INTERVAL '7 days'
+    ORDER BY RANDOM()
+    LIMIT ${needed}
+  `;
+  const candidates = rows as CreatureRow[];
 
   let assigned = [...candidates];
   if (assigned.length < needed) {
@@ -78,12 +61,10 @@ export async function getOrAssignNeighbors(userId: string): Promise<NeighborCrea
     assigned = [...assigned, ...(fallback as CreatureRow[])];
   }
 
-  const expiresAt = new Date(Date.now() + ROTATION_INTERVAL_MS).toISOString();
-
   for (const creature of assigned) {
     await sql`
       INSERT INTO neighbors (id, user_id, creature_id, assigned_at, expires_at)
-      VALUES (${crypto.randomUUID()}, ${userId}, ${creature.id}, NOW(), ${expiresAt})
+      VALUES (${crypto.randomUUID()}, ${userId}, ${creature.id}, NOW(), NOW() + INTERVAL '4 hours')
       ON CONFLICT (user_id, creature_id) DO NOTHING
     `;
   }

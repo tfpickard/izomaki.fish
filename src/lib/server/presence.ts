@@ -2,7 +2,7 @@ import { sql } from './db';
 
 export async function updatePresence(userId: string): Promise<void> {
   await sql`
-    UPDATE creatures SET last_seen_at = NOW()
+    UPDATE creatures SET last_seen_at = NOW(), is_active = true
     WHERE user_id = ${userId}
   `;
 }
