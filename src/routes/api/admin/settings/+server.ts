@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { verifySessionToken, COOKIE_NAME } from '$lib/server/session';
+import { isAdmin } from '$lib/server/admin';
 import { setSetting } from '$lib/server/settings';
 import type { RequestHandler } from './$types';
 
@@ -15,6 +16,10 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 
   const session = verifySessionToken(token);
   if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (!(await isAdmin(session.userId))) {
+    return json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const body = await request.json() as { key: string; value: string };
 

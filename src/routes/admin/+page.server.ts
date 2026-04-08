@@ -1,7 +1,6 @@
 import { sql } from '$lib/server/db';
 import { redirect } from '@sveltejs/kit';
-
-const ADMIN_GITHUB_ID = '45548991';
+import { isAdmin } from '$lib/server/admin';
 import { getSetting } from '$lib/server/settings';
 import { getSyntheticUserCount, getSyntheticCreatureCount } from '$lib/server/synthetic';
 import type { PageServerLoad } from './$types';
@@ -13,11 +12,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     redirect(302, '/');
   }
 
-  const { rows: userRows } = await sql`
-    SELECT provider, provider_id FROM users WHERE id = ${user.id}
-  `;
-
-  if (userRows.length === 0 || !(userRows[0].provider === 'github' && userRows[0].provider_id === ADMIN_GITHUB_ID)) {
+  if (!(await isAdmin(user.id))) {
     redirect(302, '/');
   }
 
