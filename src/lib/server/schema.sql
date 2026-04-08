@@ -65,3 +65,9 @@ CREATE INDEX idx_neighbors_user ON neighbors(user_id);
 CREATE INDEX idx_neighbors_expires ON neighbors(expires_at);
 CREATE INDEX idx_creatures_active ON creatures(is_active);
 CREATE INDEX idx_creatures_last_seen ON creatures(last_seen_at);
+
+-- Phase 2b additions
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS handle TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS links JSONB DEFAULT '{}';

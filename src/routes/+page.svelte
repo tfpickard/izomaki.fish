@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
 
   import CreatureField from '$lib/components/CreatureField.svelte';
-  import LoginPage from '$lib/components/LoginPage.svelte';
+  import LandingPage from '$lib/components/LandingPage.svelte';
 
   import { getCelestialState } from '$lib/engine/celestial';
   import { stepAttractor, normalizeAttractor } from '$lib/engine/attractor';
@@ -11,18 +11,20 @@
   import { selectFrame } from '$lib/engine/selector';
 
   import { frameStore } from '$lib/stores/frames';
-  import { creatureState, attractorState, trajectories, selectedFrameId } from '$lib/stores/creature';
+  import { creatureState, attractorState, trajectories, selectedFrameId, displayAscii } from '$lib/stores/creature';
+  import { mutateFrame, shouldMutate } from '$lib/engine/procedural';
   import { celestialState } from '$lib/stores/attractor';
 
   import type { Frame } from '$lib/engine/types';
-  import type { NeighborCreature } from '$lib/types';
+  import type { NeighborCreature, UserProfile } from '$lib/types';
 
   interface Props {
     data: {
       user: { id: string } | null;
-      creature: { id: string } | null;
+      creature: { id: string; last_generated_at: string | null } | null;
       frames: { id: string; ascii: string; weights: unknown; generation_index: number; created_at: string }[];
       neighbors: NeighborCreature[];
+      profile: UserProfile | null;
     };
   }
 
@@ -75,6 +77,17 @@
       const frame = selectFrame(frames, newState);
       selectedFrameId.set(frame?.id ?? null);
 
+      const ascii = frame?.ascii ?? null;
+      if (ascii && data.creature?.id) {
+        displayAscii.set(
+          shouldMutate(newState)
+            ? mutateFrame(ascii, newState, Math.floor(time), data.creature.id)
+            : ascii
+        );
+      } else {
+        displayAscii.set(ascii);
+      }
+
       if (data.user && now - lastExperienceLog >= 60000) {
         lastExperienceLog = now;
         fetch('/api/experience', {
@@ -120,7 +133,13 @@
 </script>
 
 {#if !data.user}
-  <LoginPage />
+  <LandingPage />
 {:else}
-  <CreatureField {neighbors} {active} {total} />
+  <CreatureField
+    {neighbors}
+    {active}
+    {total}
+    profile={data.profile ?? { handle: null, bio: null, links: {} }}
+    creatureLastGeneratedAt={data.creature?.last_generated_at ?? null}
+  />
 {/if}

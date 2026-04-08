@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SoundEngine from './SoundEngine.svelte';
   import FrameEditor from './FrameEditor.svelte';
   import FrameLibrary from './FrameLibrary.svelte';
   import StateInspector from './StateInspector.svelte';
@@ -59,6 +60,7 @@
     </div>
   {/if}
 
+  <SoundEngine />
   <button
     onclick={() => open = !open}
     class="text-neutral-600 hover:text-neutral-400 font-mono text-sm px-2 py-1"

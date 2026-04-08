@@ -4,16 +4,19 @@
   import AttractorVisualization from '$lib/components/AttractorVisualization.svelte';
   import NeighborCreature from '$lib/components/NeighborCreature.svelte';
   import PlatformPulse from '$lib/components/PlatformPulse.svelte';
+  import UserMenu from '$lib/components/UserMenu.svelte';
 
-  import type { NeighborCreature as NeighborCreatureData } from '$lib/types';
+  import type { NeighborCreature as NeighborCreatureData, UserProfile } from '$lib/types';
 
   interface Props {
     neighbors: NeighborCreatureData[];
     active: number;
     total: number;
+    profile: UserProfile;
+    creatureLastGeneratedAt: string | null;
   }
 
-  let { neighbors, active, total }: Props = $props();
+  let { neighbors, active, total, profile, creatureLastGeneratedAt }: Props = $props();
 
   const positions = [
     { x: '15%', y: '70%' },
@@ -34,6 +37,7 @@
         position={positions[i]}
       />
     {/each}
+    <UserMenu {profile} {creatureLastGeneratedAt} />
     <AdminPanel />
     <PlatformPulse {active} {total} />
   </div>
