@@ -17,6 +17,7 @@ export interface UserProfile {
 
 export interface LandingCreatureData {
   creatureId: string;
+  attractorType: string;
   frames: { id: string; ascii: string; weights: unknown }[];
 }
 

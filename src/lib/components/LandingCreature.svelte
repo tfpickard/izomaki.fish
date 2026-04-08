@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  import { getCelestialState } from '$lib/engine/celestial';
-  import { stepAttractor, normalizeAttractor, INITIAL_ATTRACTOR } from '$lib/engine/attractor';
+  import { getLandingAttractorByName, createSprottB } from '$lib/engine/attractors/index';
   import { evolveState, INITIAL_STATE } from '$lib/engine/state';
   import { selectFrame } from '$lib/engine/selector';
   import { mutateFrame, shouldMutate } from '$lib/engine/procedural';
@@ -22,7 +21,8 @@
   let currentAscii: string | null = $state(null);
 
   const mountTime = Date.now();
-  let attractorState: AttractorState = { ...INITIAL_ATTRACTOR };
+  const attractor = getLandingAttractorByName(data.attractorType) ?? createSprottB();
+  let attractorState: AttractorState = { ...attractor.config.initialState };
 
   function buildOffsetTrajectories(seed: number): ParameterTrajectories {
     const offset = (seed % 1000) / 1000 * Math.PI * 2;
@@ -50,13 +50,12 @@
       const now = Date.now();
       const time = (now - mountTime) / 1000;
 
-      const celestial = getCelestialState(now);
-
       for (let i = 0; i < 10; i++) {
-        attractorState = stepAttractor(attractorState, celestial);
+        attractorState = attractor.step(attractorState);
       }
 
-      const normalized = normalizeAttractor(attractorState);
+      const { nx, ny, nz } = attractor.normalize(attractorState);
+      const normalized = { nx, ny, nz };
       const state: StateVector = evolveState(INITIAL_STATE, trajectories, normalized, time);
       const frame = selectFrame(mappedFrames, state);
       const ascii = frame?.ascii ?? null;
