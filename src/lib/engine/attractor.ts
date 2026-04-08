@@ -1,49 +1,50 @@
 import type { AttractorState, CelestialState } from './types';
+import { createSprottB } from './attractors/sprott-b';
+import { createDadras } from './attractors/dadras';
+import { getSprottBParams } from './celestial';
 
-const SIGMA_BASE = 10;
-const RHO_BASE = 28;
-const BETA_BASE = 8 / 3;
+const _sprottB = createSprottB();
+const _dadras = createDadras();
 
-const SIGMA_RANGE = 2;
-const RHO_RANGE = 4;
-const BETA_RANGE = 0.5;
+export { getSprottBParams };
 
-export function getModulatedConstants(celestial: CelestialState) {
-  const sunAngle = celestial.sun * Math.PI * 2;
-  const moonAngle = celestial.moon * Math.PI * 2;
-  return {
-    sigma: SIGMA_BASE + Math.sin(sunAngle) * SIGMA_RANGE,
-    rho: RHO_BASE + Math.sin(moonAngle) * RHO_RANGE,
-    beta: BETA_BASE + Math.sin(sunAngle + moonAngle) * BETA_RANGE
-  };
-}
-
-export function stepAttractor(
-  state: AttractorState,
-  celestial: CelestialState,
-  dt: number = 0.005
-): AttractorState {
-  const { sigma, rho, beta } = getModulatedConstants(celestial);
-  const dx = sigma * (state.y - state.x) * dt;
-  const dy = (state.x * (rho - state.z) - state.y) * dt;
-  const dz = (state.x * state.y - beta * state.z) * dt;
-  return {
-    x: state.x + dx,
-    y: state.y + dy,
-    z: state.z + dz
-  };
+export function stepAttractor(state: AttractorState, celestial: CelestialState): AttractorState {
+  const params = getSprottBParams(celestial);
+  return _sprottB.step(state, params);
 }
 
 export function normalizeAttractor(state: AttractorState): { nx: number; ny: number; nz: number } {
+  return _sprottB.normalize(state);
+}
+
+export interface CreatureExperience {
+  avgX: number;
+  avgY: number;
+  avgZ: number;
+  ageNormalized: number;
+  generationNormalized: number;
+}
+
+export function getDadrasParams(
+  sprottNorm: { nx: number; ny: number; nz: number },
+  exp: CreatureExperience
+): Record<string, number> {
   return {
-    nx: clamp((state.x + 20) / 40, 0, 1),
-    ny: clamp((state.y + 30) / 60, 0, 1),
-    nz: clamp(state.z / 50, 0, 1)
+    a: 3.0 + (sprottNorm.nx - 0.5) * 1.0 + exp.avgX * 0.2,
+    b: 2.7 + (sprottNorm.ny - 0.5) * 0.8 + exp.avgY * 0.2,
+    c: 1.7 + (sprottNorm.nz - 0.5) * 0.6 + exp.avgZ * 0.15,
+    d: 2.0 + exp.ageNormalized * 0.3,
+    e: 9.0 + exp.generationNormalized * 1.0
   };
 }
 
-function clamp(v: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, v));
+export function stepDadras(state: AttractorState, params: Record<string, number>): AttractorState {
+  return _dadras.step(state, params);
 }
 
-export const INITIAL_ATTRACTOR: AttractorState = { x: 1, y: 1, z: 1 };
+export function normalizeDadras(state: AttractorState): { nx: number; ny: number; nz: number } {
+  return _dadras.normalize(state);
+}
+
+export const INITIAL_ATTRACTOR: AttractorState = { ..._sprottB.config.initialState };
+export const INITIAL_DADRAS: AttractorState = { ..._dadras.config.initialState };
