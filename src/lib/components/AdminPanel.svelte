@@ -5,11 +5,28 @@
   import StateInspector from './StateInspector.svelte';
   import AttractorInspector from './AttractorInspector.svelte';
   import TrajectoryConfig from './TrajectoryConfig.svelte';
+  import CreatureManager from './CreatureManager.svelte';
+
+  interface CreatureData {
+    id: string;
+    created_at: string;
+    generation_count: number;
+    display_order: number;
+    frames: { id: string }[];
+  }
+
+  interface Props {
+    allCreatures: CreatureData[];
+    maxCreatures: number;
+  }
+
+  let { allCreatures, maxCreatures }: Props = $props();
 
   let open = $state(false);
 
-  type Section = 'editor' | 'library' | 'state' | 'attractor' | 'trajectory';
+  type Section = 'creatures' | 'editor' | 'library' | 'state' | 'attractor' | 'trajectory';
   let collapsed = $state<Record<Section, boolean>>({
+    creatures: false,
     editor: false,
     library: false,
     state: true,
@@ -26,11 +43,12 @@
   {#if open}
     <div class="w-96 bg-neutral-900 border-l border-neutral-800 overflow-y-auto max-h-screen pb-10 flex flex-col">
       {#each [
-        { key: 'editor'    as Section, label: 'frame editor' },
-        { key: 'library'   as Section, label: 'frame library' },
-        { key: 'state'     as Section, label: 'state' },
-        { key: 'attractor' as Section, label: 'attractor' },
-        { key: 'trajectory'as Section, label: 'trajectory' }
+        { key: 'creatures'   as Section, label: 'creatures' },
+        { key: 'editor'      as Section, label: 'frame editor' },
+        { key: 'library'     as Section, label: 'frame library' },
+        { key: 'state'       as Section, label: 'state' },
+        { key: 'attractor'   as Section, label: 'attractor' },
+        { key: 'trajectory'  as Section, label: 'trajectory' }
       ] as section}
         <div class="border-b border-neutral-800">
           <button
@@ -42,7 +60,9 @@
           </button>
           {#if !collapsed[section.key]}
             <div class="px-3 pb-3">
-              {#if section.key === 'editor'}
+              {#if section.key === 'creatures'}
+                <CreatureManager {allCreatures} {maxCreatures} />
+              {:else if section.key === 'editor'}
                 <FrameEditor />
               {:else if section.key === 'library'}
                 <FrameLibrary />
