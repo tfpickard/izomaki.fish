@@ -75,7 +75,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS links JSONB DEFAULT '{}';
 -- Phase 2c additions
 
 -- Remove one-creature-per-user constraint
-ALTER TABLE creatures DROP CONSTRAINT creatures_user_id_key;
+ALTER TABLE creatures DROP CONSTRAINT IF EXISTS creatures_user_id_key;
 
 -- Add display order for multiple creatures
 ALTER TABLE creatures ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;

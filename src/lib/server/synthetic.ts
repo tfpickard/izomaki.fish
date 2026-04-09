@@ -1,6 +1,8 @@
 import { sql } from './db';
 import { generateInitFrame } from './generation';
 
+const ATTRACTOR_TYPES = ['sprott-b', 'dadras', 'chen-lee', 'aizawa', 'halvorsen', 'rossler'];
+
 const SYNTHETIC_NAMES = [
   'Mori', 'Tanabe', 'Kusano', 'Ogata', 'Shimizu',
   'Nagai', 'Ueno', 'Kato', 'Hayashi', 'Fujita',
@@ -30,9 +32,10 @@ export async function spawnSyntheticUsers(count: number): Promise<string[]> {
 
     const creatureId = crypto.randomUUID();
     const hoursOld = Math.floor(Math.random() * 720);
+    const attractorType = ATTRACTOR_TYPES[Math.floor(Math.random() * ATTRACTOR_TYPES.length)];
     await sql`
-      INSERT INTO creatures (id, user_id, is_synthetic, created_at)
-      VALUES (${creatureId}, ${userId}, true, NOW() - (${hoursOld} || ' hours')::interval)
+      INSERT INTO creatures (id, user_id, is_synthetic, attractor_type, created_at)
+      VALUES (${creatureId}, ${userId}, true, ${attractorType}, NOW() - (${hoursOld} || ' hours')::interval)
     `;
 
     generateInitFrame(creatureId).catch(() => {});

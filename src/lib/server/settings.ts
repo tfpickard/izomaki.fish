@@ -17,10 +17,12 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function getMaxCreaturesPerUser(): Promise<number> {
   const val = await getSetting('max_creatures_per_user');
-  return val ? parseInt(val, 10) : 3;
+  const n = val ? parseInt(val, 10) : 3;
+  return Number.isFinite(n) ? n : 3;
 }
 
 export async function getMinCreatureFloor(): Promise<number> {
   const val = await getSetting('min_creature_floor');
-  return val ? parseInt(val, 10) : 25;
+  const n = val ? parseInt(val, 10) : 25;
+  return Number.isFinite(n) ? n : 25;
 }

@@ -20,10 +20,15 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
     return json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await request.json() as { action: string; count?: number };
+  let body: { action: unknown; count?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
   if (body.action === 'spawn') {
-    const count = Math.min(Math.max(1, body.count ?? 1), 50);
+    const count = Math.min(Math.max(1, Number(body.count) || 1), 50);
     await spawnSyntheticUsers(count);
   } else if (body.action === 'purge') {
     await purgeAllSynthetic();

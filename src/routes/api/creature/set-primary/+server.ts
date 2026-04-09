@@ -10,7 +10,17 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   const session = verifySessionToken(token);
   if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { creatureId } = await request.json() as { creatureId: string };
+  let body: { creatureId?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { creatureId } = body;
+  if (typeof creatureId !== 'string' || !creatureId) {
+    return json({ error: 'creatureId required' }, { status: 400 });
+  }
 
   const { rows } = await sql`
     SELECT id FROM creatures

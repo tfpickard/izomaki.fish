@@ -56,10 +56,12 @@
         class="absolute"
         style="left: {positions[slot].left}; top: {positions[slot].top}; transform: translate(-50%, -50%) scale(0.6); transform-origin: center;"
       >
-        <LandingCreature
-          data={creatures[idx]}
-          visible={true}
-        />
+        {#key creatures[idx].creatureId}
+          <LandingCreature
+            data={creatures[idx]}
+            visible={true}
+          />
+        {/key}
       </div>
     {/if}
   {/each}

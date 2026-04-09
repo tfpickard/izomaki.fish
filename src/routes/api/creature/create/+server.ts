@@ -15,7 +15,8 @@ export const POST: RequestHandler = async ({ cookies }) => {
   const maxCreatures = await getMaxCreaturesPerUser();
 
   const { rows } = await sql`
-    SELECT COUNT(*)::int as count FROM creatures WHERE user_id = ${session.userId}
+    SELECT COUNT(*)::int as count, COALESCE(MAX(display_order), -1) as max_order
+    FROM creatures WHERE user_id = ${session.userId}
   `;
 
   const currentCount = rows[0]?.count ?? 0;
@@ -23,10 +24,11 @@ export const POST: RequestHandler = async ({ cookies }) => {
     return json({ error: `Maximum ${maxCreatures} creatures allowed` }, { status: 400 });
   }
 
+  const nextOrder = (rows[0]?.max_order ?? -1) + 1;
   const creatureId = crypto.randomUUID();
   await sql`
     INSERT INTO creatures (id, user_id, display_order)
-    VALUES (${creatureId}, ${session.userId}, ${currentCount})
+    VALUES (${creatureId}, ${session.userId}, ${nextOrder})
   `;
 
   generateInitFrame(creatureId).catch(() => {});

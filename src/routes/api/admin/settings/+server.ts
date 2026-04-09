@@ -21,13 +21,27 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
     return json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await request.json() as { key: string; value: string };
+  let body: { key: unknown; value: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
-  if (!ALLOWED_KEYS.has(body.key)) {
+  if (typeof body.key !== 'string' || !ALLOWED_KEYS.has(body.key)) {
     return json({ error: 'Unknown setting key' }, { status: 400 });
   }
 
-  await setSetting(body.key, String(body.value));
+  const numericKeys = new Set(['max_creatures_per_user', 'min_creature_floor']);
+  const value = String(body.value);
+  if (numericKeys.has(body.key)) {
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n) || n < 1) {
+      return json({ error: 'Value must be a positive integer' }, { status: 400 });
+    }
+  }
+
+  await setSetting(body.key, value);
 
   return json({ ok: true });
 };
