@@ -71,3 +71,36 @@ CREATE INDEX idx_creatures_last_seen ON creatures(last_seen_at);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS handle TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS links JSONB DEFAULT '{}';
+
+-- Phase 2c additions
+
+-- Remove one-creature-per-user constraint
+ALTER TABLE creatures DROP CONSTRAINT IF EXISTS creatures_user_id_key;
+
+-- Add display order for multiple creatures
+ALTER TABLE creatures ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+-- Synthetic flag
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_synthetic BOOLEAN DEFAULT false;
+ALTER TABLE creatures ADD COLUMN IF NOT EXISTS is_synthetic BOOLEAN DEFAULT false;
+
+-- Attractor type per creature (for landing page)
+ALTER TABLE creatures ADD COLUMN IF NOT EXISTS attractor_type TEXT DEFAULT 'dadras';
+
+-- Admin settings table
+CREATE TABLE IF NOT EXISTS admin_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Seed default settings
+INSERT INTO admin_settings (key, value) VALUES
+  ('max_creatures_per_user', '3'),
+  ('min_creature_floor', '25'),
+  ('synthetic_generation_enabled', 'true')
+ON CONFLICT (key) DO NOTHING;
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_creatures_user ON creatures(user_id);
+CREATE INDEX IF NOT EXISTS idx_creatures_synthetic ON creatures(is_synthetic);

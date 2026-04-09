@@ -11,3 +11,14 @@ export function getCelestialState(now: number): CelestialState {
   const moon = (elapsed % LUNAR_MONTH_MS) / LUNAR_MONTH_MS;
   return { sun, moon };
 }
+
+export function getSprottBParams(celestial: CelestialState): Record<string, number> {
+  const sunAngle = celestial.sun * Math.PI * 2;
+  const moonAngle = celestial.moon * Math.PI * 2;
+  const combinedAngle = (celestial.sun + celestial.moon) * Math.PI * 2;
+  return {
+    a: 0.4 + Math.sin(sunAngle) * 0.15,
+    b: 1.2 + Math.sin(moonAngle) * 0.3,
+    c: 1.0 + Math.sin(combinedAngle) * 0.2
+  };
+}

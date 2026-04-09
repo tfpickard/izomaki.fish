@@ -4,6 +4,7 @@ import type { LandingCreatureData, PlatformStats } from '$lib/types';
 interface CreatureRow {
   id: string;
   created_at: string;
+  attractor_type: string;
 }
 
 interface FrameRow {
@@ -20,7 +21,7 @@ interface StatsRow {
   avg_frames: string;
 }
 
-async function fetchCreatureFrames(id: string): Promise<LandingCreatureData | null> {
+async function fetchCreatureFrames(id: string, attractorType: string): Promise<LandingCreatureData | null> {
   const { rows } = await sql<FrameRow>`
     SELECT id, ascii, weights FROM frames
     WHERE creature_id = ${id}
@@ -29,15 +30,16 @@ async function fetchCreatureFrames(id: string): Promise<LandingCreatureData | nu
   if (rows.length === 0) return null;
   return {
     creatureId: id,
+    attractorType,
     frames: rows.map(f => ({ id: f.id, ascii: f.ascii, weights: f.weights }))
   };
 }
 
 export async function getLandingData(): Promise<{ creatures: LandingCreatureData[]; stats: PlatformStats }> {
   const { rows: creatureRows } = await sql<CreatureRow>`
-    SELECT id, created_at FROM creatures
+    SELECT id, created_at, attractor_type FROM creatures
     WHERE is_active = true
-    AND last_seen_at > NOW() - INTERVAL '7 days'
+      AND (last_seen_at > NOW() - INTERVAL '7 days' OR is_synthetic = true)
     ORDER BY RANDOM()
     LIMIT 4
   `;
@@ -53,7 +55,7 @@ export async function getLandingData(): Promise<{ creatures: LandingCreatureData
   `;
 
   const creatureResults = await Promise.all(
-    creatureRows.map((r: CreatureRow) => fetchCreatureFrames(r.id))
+    creatureRows.map((r: CreatureRow) => fetchCreatureFrames(r.id, r.attractor_type))
   );
 
   const creatures = creatureResults.filter((c): c is LandingCreatureData => c !== null);

@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
 
   import { getCelestialState } from '$lib/engine/celestial';
-  import { stepAttractor, normalizeAttractor, INITIAL_ATTRACTOR } from '$lib/engine/attractor';
+  import { stepAttractor, normalizeAttractor, INITIAL_ATTRACTOR, stepDadras, normalizeDadras, getDadrasParams, INITIAL_DADRAS } from '$lib/engine/attractor';
+  import type { CreatureExperience } from '$lib/engine/attractor';
   import { evolveState, INITIAL_STATE } from '$lib/engine/state';
   import { selectFrame } from '$lib/engine/selector';
   import { DEFAULT_TRAJECTORIES } from '$lib/engine/types';
@@ -15,14 +16,17 @@
     experience: unknown;
     creatureId: string;
     position: { x: string; y: string };
+    createdAt?: string;
+    generationCount?: number;
   }
 
-  let { frames, creatureId, position }: Props = $props();
+  let { frames, creatureId, position, createdAt, generationCount }: Props = $props();
 
   let currentAscii: string | null = $state(null);
 
   const mountTime = Date.now();
   let attractorState: AttractorState = { ...INITIAL_ATTRACTOR };
+  let dadrasState = { ...INITIAL_DADRAS };
 
   function hashToPhaseOffset(id: string): number {
     let hash = 0;
@@ -51,6 +55,18 @@
     createdAt: 0
   }));
 
+  function buildExperience(): CreatureExperience {
+    const ageMs = createdAt ? Date.now() - new Date(createdAt).getTime() : 0;
+    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+    return {
+      avgX: 0,
+      avgY: 0,
+      avgZ: 0,
+      ageNormalized: Math.min(ageDays / 30, 1),
+      generationNormalized: Math.min((generationCount ?? 0) / 50, 1)
+    };
+  }
+
   onMount(() => {
     if (mappedFrames.length === 0) return;
 
@@ -65,7 +81,15 @@
       }
 
       const normalized = normalizeAttractor(attractorState);
-      const state = evolveState(INITIAL_STATE, trajectories, normalized, time);
+
+      // Tier 2: Dadras modulated by Sprott B + experience
+      const exp = buildExperience();
+      const dadrasParams = getDadrasParams(normalized, exp);
+      for (let i = 0; i < 5; i++) {
+        dadrasState = stepDadras(dadrasState, dadrasParams);
+      }
+      const dadrasNorm = normalizeDadras(dadrasState);
+      const state = evolveState(INITIAL_STATE, trajectories, dadrasNorm, time);
       const frame = selectFrame(mappedFrames, state);
       const ascii = frame?.ascii ?? null;
       currentAscii = (ascii && shouldMutate(state))

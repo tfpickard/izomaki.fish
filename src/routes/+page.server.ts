@@ -2,6 +2,7 @@ import { sql } from '$lib/server/db';
 import { generateInitFrame, generateEvolvedFrame } from '$lib/server/generation';
 import { updatePresence } from '$lib/server/presence';
 import { getOrAssignNeighbors } from '$lib/server/neighbors';
+import { getMaxCreaturesPerUser } from '$lib/server/settings';
 import type { UserProfile } from '$lib/types';
 import type { PageServerLoad } from './$types';
 
@@ -9,21 +10,23 @@ export const load: PageServerLoad = async ({ parent }) => {
   const { user } = await parent();
 
   if (!user) {
-    return { creature: null, frames: [], neighbors: [], profile: null };
+    return { creature: null, allCreatures: [], frames: [], neighbors: [], profile: null, maxCreatures: 3 };
   }
 
-  const { rows: creatureRows } = await sql`
-    SELECT id, created_at, generation_count, last_generated_at, next_generation_at
+  const { rows: allCreatureRows } = await sql`
+    SELECT id, created_at, generation_count, last_generated_at, next_generation_at, display_order, last_seen_at
     FROM creatures
     WHERE user_id = ${user.id}
-    LIMIT 1
+    ORDER BY display_order ASC
   `;
 
-  if (creatureRows.length === 0) {
-    return { creature: null, frames: [], neighbors: [] };
+  const maxCreatures = await getMaxCreaturesPerUser();
+
+  if (allCreatureRows.length === 0) {
+    return { creature: null, allCreatures: [], frames: [], neighbors: [], profile: null, maxCreatures };
   }
 
-  const creature = creatureRows[0];
+  const creature = allCreatureRows[0];
 
   const { rows: frameRows } = await sql`
     SELECT id, ascii, weights, generation_index, created_at
@@ -32,7 +35,6 @@ export const load: PageServerLoad = async ({ parent }) => {
     ORDER BY created_at ASC
   `;
 
-  // Trigger generation on page load if needed.
   if (frameRows.length === 0) {
     generateInitFrame(creature.id).catch(() => {});
   } else if (creature.next_generation_at && new Date(creature.next_generation_at) <= new Date()) {
@@ -52,5 +54,19 @@ export const load: PageServerLoad = async ({ parent }) => {
     links: pr?.links ?? {}
   };
 
-  return { creature, frames: frameRows, neighbors, profile };
+  const allCreatures = await Promise.all(
+    allCreatureRows.map(async (c: typeof creature) => {
+      if (c.id === creature.id) {
+        return { ...c, frames: frameRows };
+      }
+      const { rows: secFrames } = await sql`
+        SELECT id, ascii, weights, generation_index, created_at
+        FROM frames WHERE creature_id = ${c.id}
+        ORDER BY created_at ASC
+      `;
+      return { ...c, frames: secFrames };
+    })
+  );
+
+  return { creature, allCreatures, frames: frameRows, neighbors, profile, maxCreatures };
 };

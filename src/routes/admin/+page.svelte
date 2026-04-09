@@ -1,5 +1,6 @@
 <script lang="ts">
   import AdminPage from '$lib/components/AdminPage.svelte';
+  import SyntheticControls from '$lib/components/SyntheticControls.svelte';
   import type { StateVector } from '$lib/engine/types';
 
   interface DbFrame {
@@ -31,3 +32,12 @@
     no creature found
   </div>
 {/if}
+
+<div class="min-h-0 bg-neutral-950 text-neutral-300 font-mono px-8 pb-8">
+  <SyntheticControls
+    syntheticUsers={data.syntheticUsers}
+    syntheticCreatures={data.syntheticCreatures}
+    maxCreaturesPerUser={data.maxCreaturesPerUser}
+    minCreatureFloor={data.minCreatureFloor}
+  />
+</div>
