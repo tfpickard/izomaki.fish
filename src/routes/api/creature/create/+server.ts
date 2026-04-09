@@ -5,6 +5,8 @@ import { getMaxCreaturesPerUser } from '$lib/server/settings';
 import { generateInitFrame } from '$lib/server/generation';
 import type { RequestHandler } from './$types';
 
+const ATTRACTOR_TYPES = ['chen-lee', 'sprott-b', 'aizawa', 'halvorsen', 'dadras', 'rossler'];
+
 export const POST: RequestHandler = async ({ cookies }) => {
   const token = cookies.get(COOKIE_NAME);
   if (!token) return json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,7 +17,8 @@ export const POST: RequestHandler = async ({ cookies }) => {
   const maxCreatures = await getMaxCreaturesPerUser();
 
   const { rows } = await sql`
-    SELECT COUNT(*)::int as count FROM creatures WHERE user_id = ${session.userId}
+    SELECT COUNT(*)::int as count, COALESCE(MAX(display_order), -1)::int as max_order
+    FROM creatures WHERE user_id = ${session.userId}
   `;
 
   const currentCount = rows[0]?.count ?? 0;
@@ -23,13 +26,18 @@ export const POST: RequestHandler = async ({ cookies }) => {
     return json({ error: `Maximum ${maxCreatures} creatures allowed` }, { status: 400 });
   }
 
+  const nextOrder = (rows[0]?.max_order ?? -1) + 1;
+  const attractorType = ATTRACTOR_TYPES[Math.floor(Math.random() * ATTRACTOR_TYPES.length)];
   const creatureId = crypto.randomUUID();
+
   await sql`
-    INSERT INTO creatures (id, user_id, display_order)
-    VALUES (${creatureId}, ${session.userId}, ${currentCount})
+    INSERT INTO creatures (id, user_id, display_order, attractor_type)
+    VALUES (${creatureId}, ${session.userId}, ${nextOrder}, ${attractorType})
   `;
 
-  generateInitFrame(creatureId).catch(() => {});
+  generateInitFrame(creatureId).catch((err: unknown) => {
+    console.error('generateInitFrame failed for creature', creatureId, err);
+  });
 
   return json({ creatureId });
 };

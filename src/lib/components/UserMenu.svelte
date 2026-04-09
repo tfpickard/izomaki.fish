@@ -6,9 +6,10 @@
     creatureLastGeneratedAt: string | null;
   }
 
-  let { profile: initialProfile, creatureLastGeneratedAt }: Props = $props();
+  let { profile: initialProfile, creatureLastGeneratedAt: initialLastGeneratedAt }: Props = $props();
 
   let open = $state(false);
+  let creatureLastGeneratedAt = $state(initialLastGeneratedAt);
 
   let handle = $state(initialProfile.handle ?? '');
   let bio = $state(initialProfile.bio ?? '');
@@ -16,7 +17,7 @@
   let mastodon = $state(initialProfile.links?.mastodon ?? '');
   let github = $state(initialProfile.links?.github ?? '');
 
-  let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle');
+  let saveStatus = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
   let generating = $state(false);
   let generateError = $state<string | null>(null);
 
@@ -32,16 +33,20 @@
     if (mastodon) links.mastodon = mastodon;
     if (github) links.github = github;
 
-    await fetch('/api/profile', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        handle: handle || null,
-        bio: bio || null,
-        links
-      })
-    });
-    saveStatus = 'saved';
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          handle: handle || null,
+          bio: bio || null,
+          links
+        })
+      });
+      saveStatus = res.ok ? 'saved' : 'error';
+    } catch {
+      saveStatus = 'error';
+    }
     setTimeout(() => { saveStatus = 'idle'; }, 2000);
   }
 
@@ -52,6 +57,8 @@
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       generateError = body.error ?? 'failed';
+    } else {
+      creatureLastGeneratedAt = new Date().toISOString();
     }
     generating = false;
   }
@@ -118,6 +125,8 @@
           <span class="text-neutral-700 mt-1">saving...</span>
         {:else if saveStatus === 'saved'}
           <span class="text-neutral-600 mt-1">saved</span>
+        {:else if saveStatus === 'error'}
+          <span class="text-neutral-700 mt-1">save failed</span>
         {/if}
       </div>
 

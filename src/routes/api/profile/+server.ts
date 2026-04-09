@@ -12,13 +12,13 @@ function getSession(cookies: Parameters<RequestHandler>[0]['cookies']) {
 
 export const GET: RequestHandler = async ({ cookies }) => {
   const session = getSession(cookies);
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
 
   const { rows } = await sql`
     SELECT handle, bio, links FROM users WHERE id = ${session.userId}
   `;
 
-  if (rows.length === 0) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
+  if (rows.length === 0) return json({ error: 'Not found' }, { status: 404 });
 
   const row = rows[0];
   const profile: UserProfile = {
@@ -32,13 +32,20 @@ export const GET: RequestHandler = async ({ cookies }) => {
 
 export const PUT: RequestHandler = async ({ cookies, request }) => {
   const session = getSession(cookies);
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json() as Partial<UserProfile>;
+  let body: Partial<UserProfile>;
+  try {
+    body = await request.json() as Partial<UserProfile>;
+  } catch {
+    return json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
   const handle = typeof body.handle === 'string' ? body.handle.trim().slice(0, 32) || null : undefined;
   const bio = typeof body.bio === 'string' ? body.bio.trim().slice(0, 160) || null : undefined;
-  const links = body.links !== undefined ? body.links : undefined;
+  const links = (body.links !== undefined && typeof body.links === 'object' && body.links !== null)
+    ? body.links
+    : undefined;
 
   await sql`
     UPDATE users SET

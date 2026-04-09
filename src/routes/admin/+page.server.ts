@@ -5,6 +5,12 @@ import { getSetting } from '$lib/server/settings';
 import { getSyntheticUserCount, getSyntheticCreatureCount } from '$lib/server/synthetic';
 import type { PageServerLoad } from './$types';
 
+function parseIntSafe(val: string | null, fallback: number): number {
+  if (!val) return fallback;
+  const n = parseInt(val, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 export const load: PageServerLoad = async ({ parent }) => {
   const { user } = await parent();
 
@@ -23,19 +29,15 @@ export const load: PageServerLoad = async ({ parent }) => {
     LIMIT 1
   `;
 
-  if (creatureRows.length === 0) {
-    return { creature: null, frames: [], syntheticUsers: 0, syntheticCreatures: 0, maxCreaturesPerUser: 3, minCreatureFloor: 25 };
-  }
-
-  const creature = creatureRows[0];
-
   const [frameResult, syntheticUsers, syntheticCreatures, maxVal, minVal] = await Promise.all([
-    sql`
-      SELECT id, ascii, weights, generation_index, created_at
-      FROM frames
-      WHERE creature_id = ${creature.id}
-      ORDER BY created_at DESC
-    `,
+    creatureRows.length > 0
+      ? sql`
+          SELECT id, ascii, weights, generation_index, created_at
+          FROM frames
+          WHERE creature_id = ${creatureRows[0].id}
+          ORDER BY created_at DESC
+        `
+      : Promise.resolve({ rows: [] }),
     getSyntheticUserCount(),
     getSyntheticCreatureCount(),
     getSetting('max_creatures_per_user'),
@@ -43,11 +45,11 @@ export const load: PageServerLoad = async ({ parent }) => {
   ]);
 
   return {
-    creature,
+    creature: creatureRows[0] ?? null,
     frames: frameResult.rows,
     syntheticUsers,
     syntheticCreatures,
-    maxCreaturesPerUser: maxVal ? parseInt(maxVal, 10) : 3,
-    minCreatureFloor: minVal ? parseInt(minVal, 10) : 25
+    maxCreaturesPerUser: parseIntSafe(maxVal, 3),
+    minCreatureFloor: parseIntSafe(minVal, 25)
   };
 };

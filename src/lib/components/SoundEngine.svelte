@@ -8,13 +8,22 @@
   let enabled = $state(false);
 
   const soundInput = derived([attractorState, creatureState], ([$a, $s]) => ({ a: $a, s: $s }));
-  const unsub = soundInput.subscribe(({ a, s }) => {
-    if (engine.isRunning) engine.update(s, a.z);
-  });
+  let unsub = () => {};
 
   onMount(() => {
     enabled = localStorage.getItem('izomaki-sound') === 'true';
-    if (enabled) engine.start();
+    if (enabled) {
+      try {
+        engine.start();
+      } catch {
+        enabled = false;
+        localStorage.setItem('izomaki-sound', 'false');
+      }
+    }
+
+    unsub = soundInput.subscribe(({ a, s }) => {
+      if (engine.isRunning) engine.update(s, a.z);
+    });
   });
 
   onDestroy(() => {
@@ -27,8 +36,12 @@
       engine.stop();
       enabled = false;
     } else {
-      engine.start();
-      enabled = true;
+      try {
+        engine.start();
+        enabled = true;
+      } catch {
+        enabled = false;
+      }
     }
     localStorage.setItem('izomaki-sound', String(enabled));
   }

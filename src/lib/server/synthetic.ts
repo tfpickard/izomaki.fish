@@ -14,6 +14,8 @@ const SYNTHETIC_NAMES = [
   'Ikeda', 'Hirata', 'Nakata', 'Omori', 'Tsuji'
 ];
 
+const ATTRACTOR_TYPES = ['chen-lee', 'sprott-b', 'aizawa', 'halvorsen', 'dadras', 'rossler'];
+
 export async function spawnSyntheticUsers(count: number): Promise<string[]> {
   const createdIds: string[] = [];
 
@@ -30,12 +32,16 @@ export async function spawnSyntheticUsers(count: number): Promise<string[]> {
 
     const creatureId = crypto.randomUUID();
     const hoursOld = Math.floor(Math.random() * 720);
+    const attractorType = ATTRACTOR_TYPES[Math.floor(Math.random() * ATTRACTOR_TYPES.length)];
+
     await sql`
-      INSERT INTO creatures (id, user_id, is_synthetic, created_at)
-      VALUES (${creatureId}, ${userId}, true, NOW() - (${hoursOld} || ' hours')::interval)
+      INSERT INTO creatures (id, user_id, is_synthetic, created_at, attractor_type)
+      VALUES (${creatureId}, ${userId}, true, NOW() - (${hoursOld} || ' hours')::interval, ${attractorType})
     `;
 
-    generateInitFrame(creatureId).catch(() => {});
+    generateInitFrame(creatureId).catch((err: unknown) => {
+      console.error('generateInitFrame failed for synthetic creature', creatureId, err);
+    });
 
     createdIds.push(userId);
   }

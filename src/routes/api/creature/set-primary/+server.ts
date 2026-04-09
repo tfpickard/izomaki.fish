@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { sql } from '$lib/server/db';
+import { sql, db } from '$lib/server/db';
 import { verifySessionToken, COOKIE_NAME } from '$lib/server/session';
 import type { RequestHandler } from './$types';
 
@@ -10,7 +10,16 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   const session = verifySessionToken(token);
   if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { creatureId } = await request.json() as { creatureId: string };
+  let creatureId: string;
+  try {
+    const body = await request.json() as { creatureId?: unknown };
+    if (typeof body?.creatureId !== 'string' || !body.creatureId) {
+      return json({ error: 'Invalid creatureId' }, { status: 400 });
+    }
+    creatureId = body.creatureId;
+  } catch {
+    return json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
   const { rows } = await sql`
     SELECT id FROM creatures
@@ -23,8 +32,21 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
   const ordered = [target, ...rows.filter(r => r.id !== creatureId)];
 
-  for (let i = 0; i < ordered.length; i++) {
-    await sql`UPDATE creatures SET display_order = ${i} WHERE id = ${ordered[i].id}`;
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    for (let i = 0; i < ordered.length; i++) {
+      await client.query(
+        'UPDATE creatures SET display_order = $1 WHERE id = $2',
+        [i, ordered[i].id]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
   }
 
   return json({ ok: true });

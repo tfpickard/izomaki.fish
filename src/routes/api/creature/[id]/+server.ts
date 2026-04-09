@@ -10,17 +10,20 @@ export const DELETE: RequestHandler = async ({ params, cookies }) => {
   const session = verifySessionToken(token);
   if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { rows } = await sql`
-    DELETE FROM creatures
-    WHERE id = ${params.id}
-      AND user_id = ${session.userId}
-      AND display_order != 0
-    RETURNING id
+  const { rows: existing } = await sql`
+    SELECT display_order FROM creatures
+    WHERE id = ${params.id} AND user_id = ${session.userId}
   `;
 
-  if (rows.length === 0) {
-    return json({ error: 'Not found or is primary creature' }, { status: 400 });
+  if (existing.length === 0) {
+    return json({ error: 'Not found' }, { status: 404 });
   }
+
+  if (existing[0].display_order === 0) {
+    return json({ error: 'Cannot delete primary creature' }, { status: 409 });
+  }
+
+  await sql`DELETE FROM creatures WHERE id = ${params.id} AND user_id = ${session.userId}`;
 
   return json({ ok: true });
 };
