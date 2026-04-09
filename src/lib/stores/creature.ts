@@ -8,3 +8,4 @@ export const creatureState = writable<StateVector>(INITIAL_STATE);
 export const attractorState = writable<AttractorState>(INITIAL_ATTRACTOR);
 export const trajectories = writable<ParameterTrajectories>(DEFAULT_TRAJECTORIES);
 export const selectedFrameId = writable<string | null>(null);
+export const displayAscii = writable<string | null>(null);

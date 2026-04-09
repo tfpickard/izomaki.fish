@@ -1,12 +1,12 @@
 <script lang="ts">
   import { attractorState } from '$lib/stores/creature';
   import { celestialState } from '$lib/stores/attractor';
-  import { getModulatedConstants } from '$lib/engine/attractor';
+  import { getSprottBParams } from '$lib/engine/attractor';
   import { derived } from 'svelte/store';
 
-  const constants = derived(
+  const params = derived(
     [attractorState, celestialState],
-    ([_attractor, $celestial]) => getModulatedConstants($celestial)
+    ([_attractor, $celestial]) => getSprottBParams($celestial)
   );
 </script>
 
@@ -21,8 +21,8 @@
     <span>moon <span class="text-neutral-400">{$celestialState.moon.toFixed(4)}</span></span>
   </div>
   <div class="flex gap-4">
-    <span>σ <span class="text-neutral-400">{$constants.sigma.toFixed(4)}</span></span>
-    <span>ρ <span class="text-neutral-400">{$constants.rho.toFixed(4)}</span></span>
-    <span>β <span class="text-neutral-400">{$constants.beta.toFixed(4)}</span></span>
+    <span>a <span class="text-neutral-400">{$params.a.toFixed(4)}</span></span>
+    <span>b <span class="text-neutral-400">{$params.b.toFixed(4)}</span></span>
+    <span>c <span class="text-neutral-400">{$params.c.toFixed(4)}</span></span>
   </div>
 </div>
