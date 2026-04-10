@@ -71,7 +71,7 @@
 
 {#if currentAscii}
   <pre
-    class="font-mono text-emerald-400 leading-tight select-none pointer-events-none"
+    class="font-mono text-[var(--color-accent)] leading-tight select-none pointer-events-none"
     style="opacity: {visible ? 0.7 : 0}; transition: opacity 1s ease;"
   >{currentAscii}</pre>
 {/if}

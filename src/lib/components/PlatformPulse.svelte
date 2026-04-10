@@ -9,6 +9,6 @@
 
 {#if total > 1}
   <div class="absolute bottom-4 left-4" style="z-index: 2;">
-    <span class="font-mono text-xs text-neutral-700 select-none">{active} / {total}</span>
+    <span class="font-mono text-xs text-[var(--color-fg-faint)] select-none">{active} / {total}</span>
   </div>
 {/if}

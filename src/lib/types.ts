@@ -13,6 +13,7 @@ export interface UserProfile {
     mastodon?: string;
     github?: string;
   };
+  bioAnswers: Record<string, string>;
 }
 
 export interface LandingCreatureData {

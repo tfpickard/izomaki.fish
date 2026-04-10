@@ -45,13 +45,14 @@ export const load: PageServerLoad = async ({ parent }) => {
   const neighbors = await getOrAssignNeighbors(user.id);
 
   const { rows: profileRows } = await sql`
-    SELECT handle, bio, links FROM users WHERE id = ${user.id}
+    SELECT handle, bio, links, bio_answers FROM users WHERE id = ${user.id}
   `;
   const pr = profileRows[0];
   const profile: UserProfile = {
     handle: pr?.handle ?? null,
     bio: pr?.bio ?? null,
-    links: pr?.links ?? {}
+    links: pr?.links ?? {},
+    bioAnswers: pr?.bio_answers ?? {}
   };
 
   const allCreatures = await Promise.all(

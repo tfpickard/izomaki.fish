@@ -103,7 +103,7 @@
 
 {#if currentAscii}
   <pre
-    class="absolute font-mono text-emerald-400 opacity-60 leading-tight select-none pointer-events-none"
+    class="absolute font-mono text-[var(--color-accent)] opacity-60 leading-tight select-none pointer-events-none"
     style="left: {position.x}; top: {position.y}; transform: translate(-50%, -50%) scale(0.6); transform-origin: center;"
   >{currentAscii}</pre>
 {/if}

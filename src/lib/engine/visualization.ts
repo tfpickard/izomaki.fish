@@ -19,7 +19,7 @@ export function computeTrail(
   let current = { ...start };
 
   for (let i = 0; i < steps; i++) {
-    current = stepAttractor(current, celestial, 0.005);
+    current = stepAttractor(current, celestial);
     trail.push({
       x: current.x,
       y: current.y,

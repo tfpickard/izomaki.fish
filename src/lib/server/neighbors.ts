@@ -12,10 +12,16 @@ interface CreatureRow {
   creature_id?: string;
 }
 
+interface FrameRow {
+  id: string;
+  ascii: string;
+  weights: unknown;
+}
+
 export async function getOrAssignNeighbors(userId: string): Promise<NeighborCreature[]> {
   await sql`DELETE FROM neighbors WHERE expires_at < NOW()`;
 
-  const { rows: existing } = await sql`
+  const { rows: existing } = await sql<CreatureRow>`
     SELECT n.creature_id, c.id, c.user_id, c.created_at
     FROM neighbors n
     JOIN creatures c ON c.id = n.creature_id
@@ -28,37 +34,38 @@ export async function getOrAssignNeighbors(userId: string): Promise<NeighborCrea
     return await hydrateNeighbors(existing.slice(0, NEIGHBOR_COUNT));
   }
 
-  const existingIds = existing.map((r: CreatureRow) => r.creature_id ?? r.id);
+  const existingIds = existing.map(r => r.creature_id ?? r.id);
   const needed = NEIGHBOR_COUNT - existing.length;
 
-  const { rows: ownCreature } = await sql`
+  const { rows: ownCreature } = await sql<{ id: string }>`
     SELECT id FROM creatures WHERE user_id = ${userId}
   `;
 
   if (ownCreature.length === 0) return [];
 
   const excludeIds = [...existingIds, ownCreature[0].id];
+  const excludeParam = `{${excludeIds.map(id => `"${id}"`).join(',')}}`;
 
-  const { rows } = await sql`
+  const { rows: candidates } = await sql<CreatureRow>`
     SELECT id, user_id, created_at FROM creatures
-    WHERE id != ALL(${excludeIds})
+    WHERE id != ALL(${excludeParam}::text[])
     AND is_active = true
     AND last_seen_at > NOW() - INTERVAL '7 days'
     ORDER BY RANDOM()
     LIMIT ${needed}
   `;
-  const candidates = rows as CreatureRow[];
 
-  let assigned = [...candidates];
+  let assigned: CreatureRow[] = [...candidates];
   if (assigned.length < needed) {
-    const allExclude = [...excludeIds, ...assigned.map((c: CreatureRow) => c.id)];
-    const { rows: fallback } = await sql`
+    const allExclude = [...excludeIds, ...assigned.map(c => c.id)];
+    const allExcludeParam = `{${allExclude.map(id => `"${id}"`).join(',')}}`;
+    const { rows: fallback } = await sql<CreatureRow>`
       SELECT id, user_id, created_at FROM creatures
-      WHERE id != ALL(${allExclude})
+      WHERE id != ALL(${allExcludeParam}::text[])
       ORDER BY RANDOM()
       LIMIT ${needed - assigned.length}
     `;
-    assigned = [...assigned, ...(fallback as CreatureRow[])];
+    assigned = [...assigned, ...fallback];
   }
 
   for (const creature of assigned) {
@@ -79,7 +86,7 @@ async function hydrateNeighbors(creatures: CreatureRow[]): Promise<NeighborCreat
   for (const creature of creatures) {
     const creatureId = creature.creature_id ?? creature.id;
 
-    const { rows: frames } = await sql`
+    const { rows: frames } = await sql<FrameRow>`
       SELECT id, ascii, weights FROM frames
       WHERE creature_id = ${creatureId}
       ORDER BY created_at
@@ -102,7 +109,7 @@ async function hydrateNeighbors(creatures: CreatureRow[]): Promise<NeighborCreat
 
     result.push({
       creatureId,
-      frames: frames.map((f: { id: string; ascii: string; weights: unknown }) => ({
+      frames: frames.map(f => ({
         id: f.id,
         ascii: f.ascii,
         weights: f.weights
