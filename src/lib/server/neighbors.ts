@@ -1,6 +1,13 @@
 import { sql } from './db';
 import type { NeighborCreature } from '$lib/types';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function pgTextArray(ids: string[]): string {
+  const safe = ids.filter(id => UUID_RE.test(id));
+  return `{${safe.join(',')}}`;
+}
+
 export type { NeighborCreature };
 
 const NEIGHBOR_COUNT = 3;
@@ -44,7 +51,7 @@ export async function getOrAssignNeighbors(userId: string): Promise<NeighborCrea
   if (ownCreature.length === 0) return [];
 
   const excludeIds = [...existingIds, ownCreature[0].id];
-  const excludeParam = `{${excludeIds.map(id => `"${id}"`).join(',')}}`;
+  const excludeParam = pgTextArray(excludeIds);
 
   const { rows: candidates } = await sql<CreatureRow>`
     SELECT id, user_id, created_at FROM creatures
@@ -58,7 +65,7 @@ export async function getOrAssignNeighbors(userId: string): Promise<NeighborCrea
   let assigned: CreatureRow[] = [...candidates];
   if (assigned.length < needed) {
     const allExclude = [...excludeIds, ...assigned.map(c => c.id)];
-    const allExcludeParam = `{${allExclude.map(id => `"${id}"`).join(',')}}`;
+    const allExcludeParam = pgTextArray(allExclude);
     const { rows: fallback } = await sql<CreatureRow>`
       SELECT id, user_id, created_at FROM creatures
       WHERE id != ALL(${allExcludeParam}::text[])

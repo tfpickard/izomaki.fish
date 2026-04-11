@@ -42,6 +42,15 @@
 
   let currentAscii: string | null = $state(null);
 
+  function isSafeUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }
+
   onMount(() => {
     if (!data.creature || data.frames.length === 0) return;
 
@@ -107,14 +116,14 @@
             <p class="text-[var(--color-fg-dim)] text-xs leading-relaxed max-w-sm">{data.bio}</p>
           {/if}
           <div class="flex gap-3 text-xs text-[var(--color-fg-dim)]">
-            {#if data.links.website}
+            {#if data.links.website && isSafeUrl(data.links.website)}
               <a href={data.links.website} target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-fg)]">{data.links.website}</a>
             {/if}
             {#if data.links.mastodon}
               <span>{data.links.mastodon}</span>
             {/if}
             {#if data.links.github}
-              <a href="https://github.com/{data.links.github}" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-fg)]">github/{data.links.github}</a>
+              <a href={"https://github.com/" + encodeURIComponent(data.links.github)} target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-fg)]">github/{data.links.github}</a>
             {/if}
           </div>
         </div>

@@ -11,7 +11,7 @@
 
   function profileUrl(): string {
     if (!handle) return '';
-    return `${window.location.origin}/u/${handle}`;
+    return `${window.location.origin}/u/${encodeURIComponent(handle)}`;
   }
 
   async function copyLink() {

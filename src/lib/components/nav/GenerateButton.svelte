@@ -7,6 +7,9 @@
 
   const COOLDOWN_MS = 5 * 60 * 1000;
 
+  // Local state so we can update after a successful generate without mutating the prop
+  let lastGenerated = $state(lastGeneratedAt);
+
   let now = $state(Date.now());
   let generating = $state(false);
   let error = $state<string | null>(null);
@@ -17,8 +20,8 @@
   });
 
   function elapsed(): number {
-    if (!lastGeneratedAt) return COOLDOWN_MS;
-    return now - new Date(lastGeneratedAt).getTime();
+    if (!lastGenerated) return COOLDOWN_MS;
+    return now - new Date(lastGenerated).getTime();
   }
 
   function canGenerate(): boolean {
@@ -46,7 +49,7 @@
       const body = await res.json().catch(() => ({})) as { error?: string };
       error = body.error ?? 'failed';
     } else {
-      lastGeneratedAt = new Date().toISOString();
+      lastGenerated = new Date().toISOString();
     }
     generating = false;
   }

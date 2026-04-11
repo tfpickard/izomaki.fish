@@ -23,18 +23,28 @@
     const ctx = rawCtx;
 
     function resize() {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      const dpr = window.devicePixelRatio || 1;
+      const displayW = canvas.offsetWidth;
+      const displayH = canvas.offsetHeight;
+      canvas.width = displayW * dpr;
+      canvas.height = displayH * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
     resize();
 
+    function accentColor(): string {
+      return getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-accent').trim() || '#34d399';
+    }
+
     function draw() {
       const now = Date.now();
-      const width = canvas.width;
-      const height = canvas.height;
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.offsetWidth;
+      const height = canvas.offsetHeight;
 
       if (now - lastTrailUpdate >= TRAIL_UPDATE_INTERVAL) {
         const attractor = get(attractorState);
@@ -46,13 +56,15 @@
         lastTrailUpdate = now;
       }
 
-      ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, width * dpr, height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const time = now - startTime;
+      const color = accentColor();
 
       for (const point of trail) {
         const { x, y, opacity } = project(point, time, width, height);
         ctx.globalAlpha = opacity;
-        ctx.fillStyle = '#34d399';
+        ctx.fillStyle = color;
         ctx.fillRect(x, y, 1, 1);
       }
 
@@ -78,6 +90,7 @@
     <canvas
       bind:this={canvas}
       class="absolute inset-0 w-full h-full"
+      style="image-rendering: pixelated;"
     ></canvas>
   </div>
 

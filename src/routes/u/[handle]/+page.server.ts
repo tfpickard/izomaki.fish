@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ params }) => {
   `;
 
   if (userRows.length === 0) {
-    error(404, 'Not found');
+    throw error(404, 'Not found');
   }
 
   const user = userRows[0];
