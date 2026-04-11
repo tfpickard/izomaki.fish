@@ -41,7 +41,7 @@ export async function getLandingData(): Promise<{ creatures: LandingCreatureData
     WHERE is_active = true
       AND (last_seen_at > NOW() - INTERVAL '7 days' OR is_synthetic = true)
     ORDER BY RANDOM()
-    LIMIT 4
+    LIMIT 12
   `;
 
   const { rows: statsRows } = await sql<StatsRow>`

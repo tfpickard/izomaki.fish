@@ -35,7 +35,7 @@
 <div class="space-y-3">
   <textarea
     bind:value={ascii}
-    class="w-full font-mono text-xs bg-neutral-800 text-neutral-300 border border-neutral-700 p-2 resize-y min-h-[200px] focus:outline-none focus:border-neutral-600"
+    class="w-full font-mono text-xs bg-[var(--color-border)] text-[var(--color-fg)] border border-[var(--color-border)] p-2 resize-y min-h-[200px] focus:outline-none focus:border-[var(--color-fg-dim)]"
     placeholder=""
     spellcheck="false"
   ></textarea>
@@ -43,23 +43,23 @@
   <div class="space-y-2">
     {#each PARAMETER_KEYS as key}
       <div class="flex items-center gap-2 text-xs font-mono">
-        <span class="w-24 text-neutral-500 shrink-0">{key}</span>
+        <span class="w-24 text-[var(--color-fg-dim)] shrink-0">{key}</span>
         <input
           type="range"
           min="0"
           max="1"
           step="0.01"
           bind:value={weights[key]}
-          class="flex-1 accent-emerald-500"
+          class="flex-1 accent-[var(--color-accent)]"
         />
-        <span class="w-10 text-right text-neutral-400">{weights[key].toFixed(2)}</span>
+        <span class="w-10 text-right text-[var(--color-fg)]">{weights[key].toFixed(2)}</span>
       </div>
     {/each}
   </div>
 
   <button
     onclick={save}
-    class="w-full text-xs font-mono bg-neutral-800 hover:bg-neutral-700 text-neutral-300 py-1.5 rounded border border-neutral-700 hover:border-neutral-600"
+    class="w-full text-xs font-mono bg-[var(--color-bg-elev)] hover:bg-[var(--color-border)] text-[var(--color-fg)] py-1.5 border border-[var(--color-border)] hover:border-[var(--color-fg-faint)]"
   >
     save frame
   </button>

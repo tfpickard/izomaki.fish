@@ -4,6 +4,11 @@
 
   import CreatureField from '$lib/components/CreatureField.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
+  import NavBar from '$lib/components/nav/NavBar.svelte';
+  import AdminPanel from '$lib/components/AdminPanel.svelte';
+  import AttractorPanel from '$lib/components/panels/AttractorPanel.svelte';
+  import MoodPanel from '$lib/components/panels/MoodPanel.svelte';
+  import StatusBar from '$lib/components/panels/StatusBar.svelte';
 
   import { getCelestialState } from '$lib/engine/celestial';
   import { stepAttractor, normalizeAttractor, stepDadras, normalizeDadras, getDadrasParams, INITIAL_DADRAS } from '$lib/engine/attractor';
@@ -22,6 +27,7 @@
   interface CreatureData {
     id: string;
     last_generated_at: string | null;
+    next_generation_at: string | null;
     created_at: string;
     generation_count: number;
     display_order: number;
@@ -139,7 +145,7 @@
 
     const refreshPresence = () => {
       fetch('/api/presence', { method: 'POST' })
-        .then(r => { if (r.ok) return r.json(); })
+        .then(r => r.ok ? r.json() : undefined)
         .then((body?: { active: number; total: number }) => {
           if (body) { active = body.active; total = body.total; }
         })
@@ -161,18 +167,50 @@
       clearInterval(neighborInterval);
     };
   });
+
+  const profile = $derived(data.profile ?? { handle: null, bio: null, links: {}, bioAnswers: {} });
 </script>
 
 {#if !data.user}
   <LandingPage />
 {:else}
-  <CreatureField
-    {neighbors}
-    {active}
-    {total}
-    allCreatures={data.allCreatures}
-    maxCreatures={data.maxCreatures}
-    profile={data.profile ?? { handle: null, bio: null, links: {} }}
-    creatureLastGeneratedAt={data.creature?.last_generated_at ?? null}
-  />
+  <div class="flex flex-col h-screen overflow-hidden">
+    <NavBar
+      {profile}
+      creatureLastGeneratedAt={data.creature?.last_generated_at ?? null}
+    />
+
+    <div class="flex-1 min-h-0 grid lg:grid-cols-[1fr_2fr_1fr] grid-cols-1 overflow-hidden">
+      <!-- Creature column -->
+      <div class="relative overflow-hidden border-r border-[var(--color-border)]">
+        <CreatureField
+          {neighbors}
+          {active}
+          {total}
+          allCreatures={data.allCreatures}
+        />
+      </div>
+
+      <!-- Attractor column -->
+      <div class="overflow-hidden border-r border-[var(--color-border)]">
+        <AttractorPanel />
+      </div>
+
+      <!-- Mood column -->
+      <div class="overflow-hidden">
+        <MoodPanel />
+      </div>
+    </div>
+
+    {#if data.creature}
+      <StatusBar
+        createdAt={data.creature.created_at}
+        generationCount={data.creature.generation_count}
+        frameCount={data.frames.length}
+        nextGenerationAt={data.creature.next_generation_at}
+      />
+    {/if}
+  </div>
+
+  <AdminPanel allCreatures={data.allCreatures} maxCreatures={data.maxCreatures} />
 {/if}

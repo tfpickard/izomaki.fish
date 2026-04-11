@@ -20,7 +20,7 @@
 <div class="space-y-4 font-mono text-xs">
   {#each PARAMETER_KEYS as param}
     <div class="space-y-1">
-      <div class="text-neutral-400">{param}</div>
+      <div class="text-[var(--color-fg)]">{param}</div>
       {#each [
         { field: 'frequency' as const, label: 'freq', min: 0, max: 0.5, step: 0.001 },
         { field: 'amplitude' as const, label: 'amp',  min: 0, max: 1,   step: 0.01  },
@@ -28,7 +28,7 @@
         { field: 'noise'     as const, label: 'noise', min: 0, max: 0.2, step: 0.001 }
       ] as cfg}
         <div class="flex items-center gap-2">
-          <span class="w-12 text-neutral-600 shrink-0">{cfg.label}</span>
+          <span class="w-12 text-[var(--color-fg-dim)] shrink-0">{cfg.label}</span>
           <input
             type="range"
             min={cfg.min}
@@ -42,9 +42,9 @@
                 return next;
               });
             }}
-            class="flex-1 accent-emerald-500"
+            class="flex-1 accent-[var(--color-accent)]"
           />
-          <span class="w-12 text-right text-neutral-400">{$trajectories[param][cfg.field].toFixed(3)}</span>
+          <span class="w-12 text-right text-[var(--color-fg)]">{$trajectories[param][cfg.field].toFixed(3)}</span>
         </div>
       {/each}
     </div>

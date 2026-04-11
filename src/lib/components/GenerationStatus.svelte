@@ -17,7 +17,7 @@
   });
 
   function formatDuration(ms: number): string {
-    if (ms < 0) return '—';
+    if (ms < 0) return '--';
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
     const s = Math.floor((ms % 60000) / 1000);
@@ -27,12 +27,12 @@
   }
 
   function timeSince(): string {
-    if (!lastGeneratedAt) return '—';
+    if (!lastGeneratedAt) return '--';
     return formatDuration(now - new Date(lastGeneratedAt).getTime());
   }
 
   function timeUntil(): string {
-    if (!nextGenerationAt) return '—';
+    if (!nextGenerationAt) return '--';
     return formatDuration(new Date(nextGenerationAt).getTime() - now);
   }
 
@@ -52,7 +52,7 @@
   ));
 </script>
 
-<div class="font-mono text-xs text-neutral-500 flex flex-col gap-2">
+<div class="font-mono text-xs text-[var(--color-fg-dim)] flex flex-col gap-2">
   <div class="flex gap-4">
     <span>frames: {frames.length}</span>
     <span>last: {timeSince()} ago</span>
@@ -62,19 +62,19 @@
   <button
     onclick={forceGenerate}
     disabled={generating}
-    class="text-emerald-500 hover:text-emerald-400 disabled:opacity-40 text-left"
+    class="text-[var(--color-accent)] hover:opacity-80 disabled:opacity-40 text-left"
   >
-    {generating ? 'generating…' : 'Generate Now'}
+    {generating ? 'generating...' : 'Generate Now'}
   </button>
 
   {#if error}
-    <span class="text-red-500">{error}</span>
+    <span class="text-[var(--color-danger)]">{error}</span>
   {/if}
 
   {#if sortedFrames.length > 0}
     <div class="flex flex-col gap-1 mt-1">
       {#each sortedFrames as frame}
-        <span class="text-neutral-600">{new Date(frame.created_at).toISOString().replace('T', ' ').slice(0, 19)}</span>
+        <span class="text-[var(--color-fg-dim)]">{new Date(frame.created_at).toISOString().replace('T', ' ').slice(0, 19)}</span>
       {/each}
     </div>
   {/if}

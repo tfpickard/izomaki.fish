@@ -1,9 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			(function () {
+				try {
+					var stored = localStorage.getItem('izomaki-theme');
+					var theme = 'dark';
+					if (stored === 'dark' || stored === 'light') {
+						theme = stored;
+					} else if (stored === 'auto') {
+						var hour = new Date().getHours();
+						theme = hour >= 6 && hour < 19 ? 'light' : 'dark';
+					} else if (stored === 'system') {
+						theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+					}
+					document.documentElement.setAttribute('data-theme', theme);
+				} catch (e) {}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

@@ -28,12 +28,12 @@
 {#if creature}
   <AdminPage {creature} {frames} />
 {:else}
-  <div class="flex items-center justify-center w-screen h-screen font-mono text-neutral-600 text-sm">
+  <div class="flex items-center justify-center w-screen h-screen font-mono text-[var(--color-fg-dim)] text-sm">
     no creature found
   </div>
 {/if}
 
-<div class="min-h-0 bg-neutral-950 text-neutral-300 font-mono px-8 pb-8">
+<div class="min-h-0 bg-[var(--color-bg)] text-[var(--color-fg)] font-mono px-8 pb-8">
   <SyntheticControls
     syntheticUsers={data.syntheticUsers}
     syntheticCreatures={data.syntheticCreatures}
