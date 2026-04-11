@@ -10,21 +10,28 @@
   let answers = $state<Record<string, string>>({ ...initialAnswers });
   let savingId = $state<string | null>(null);
   let savedId = $state<string | null>(null);
+  let errorId = $state<string | null>(null);
 
   async function save(index: number) {
     const id = questionId(index);
     const value = (answers[id] ?? '').trim().slice(0, 280);
     savingId = id;
+    errorId = null;
 
-    await fetch('/api/profile', {
+    const res = await fetch('/api/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bioAnswers: { [id]: value } })
     });
 
     savingId = null;
-    savedId = id;
-    setTimeout(() => { savedId = null; }, 1500);
+    if (res.ok) {
+      savedId = id;
+      setTimeout(() => { savedId = null; }, 1500);
+    } else {
+      errorId = id;
+      setTimeout(() => { errorId = null; }, 3000);
+    }
   }
 </script>
 
@@ -46,6 +53,8 @@
           <span class="absolute right-0 bottom-2 text-[var(--color-fg-faint)]">saving...</span>
         {:else if savedId === id}
           <span class="absolute right-0 bottom-2 text-[var(--color-fg-dim)]">saved</span>
+        {:else if errorId === id}
+          <span class="absolute right-0 bottom-2 text-[var(--color-danger)]">error</span>
         {:else}
           <span class="absolute right-0 bottom-2 text-[var(--color-fg-faint)]">{(answers[id] ?? '').length}/280</span>
         {/if}

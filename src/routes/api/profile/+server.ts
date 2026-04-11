@@ -22,13 +22,14 @@ function isSafeUrl(value: string): boolean {
   }
 }
 
-function validateLinks(raw: unknown): UserProfile['links'] | null {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+function validateLinks(raw: unknown): { links: UserProfile['links'] } | { error: string } {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw))
+    return { error: 'links must be an object' };
   const obj = raw as Record<string, unknown>;
   const links: UserProfile['links'] = {};
   if (typeof obj.website === 'string') {
     const w = obj.website.trim().slice(0, 512);
-    if (w && !isSafeUrl(w)) return null;
+    if (w && !isSafeUrl(w)) return { error: 'website must use http or https' };
     if (w) links.website = w;
   }
   if (typeof obj.mastodon === 'string') {
@@ -39,7 +40,7 @@ function validateLinks(raw: unknown): UserProfile['links'] | null {
     const g = obj.github.trim().slice(0, 128);
     if (g) links.github = g;
   }
-  return links;
+  return { links };
 }
 
 export const GET: RequestHandler = async ({ cookies }) => {
@@ -74,13 +75,14 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 
   let links: UserProfile['links'] | undefined;
   if (body.links !== undefined) {
-    const validated = validateLinks(body.links);
-    if (validated === null) {
-      return new Response(JSON.stringify({ error: 'Invalid links: website must use http or https' }), { status: 400 });
+    const result = validateLinks(body.links);
+    if ('error' in result) {
+      return new Response(JSON.stringify({ error: result.error }), { status: 400 });
     }
-    links = validated;
+    links = result.links;
   }
 
+  let bioAnswersJson: string | null = null;
   if (body.bioAnswers !== undefined) {
     const raw = body.bioAnswers;
     if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
@@ -96,30 +98,28 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
       }
       validated[k] = v.trim().slice(0, 280);
     }
-
-    await sql`
-      UPDATE users SET
-        bio_answers = COALESCE(bio_answers, '{}'::jsonb) || ${JSON.stringify(validated)}::jsonb
-      WHERE id = ${session.userId}
-    `;
+    bioAnswersJson = JSON.stringify(validated);
   }
 
-  if (handle !== undefined || bio !== undefined || links !== undefined) {
-    try {
-      await sql`
-        UPDATE users SET
-          handle = COALESCE(${handle ?? null}::text, handle),
-          bio    = COALESCE(${bio ?? null}::text, bio),
-          links  = COALESCE(${links !== undefined ? JSON.stringify(links) : null}::jsonb, links)
-        WHERE id = ${session.userId}
-      `;
-    } catch (err) {
-      const e = err as { code?: string };
-      if (e.code === '23505') {
-        return new Response(JSON.stringify({ error: 'That handle is already taken' }), { status: 409 });
-      }
-      throw err;
+  const linksJson = links !== undefined ? JSON.stringify(links) : null;
+
+  try {
+    await sql`
+      UPDATE users SET
+        bio_answers = CASE WHEN ${bioAnswersJson}::jsonb IS NOT NULL
+          THEN COALESCE(bio_answers, '{}'::jsonb) || ${bioAnswersJson}::jsonb
+          ELSE bio_answers END,
+        handle = COALESCE(${handle ?? null}::text, handle),
+        bio    = COALESCE(${bio ?? null}::text, bio),
+        links  = COALESCE(${linksJson}::jsonb, links)
+      WHERE id = ${session.userId}
+    `;
+  } catch (err) {
+    const e = err as { code?: string };
+    if (e.code === '23505') {
+      return new Response(JSON.stringify({ error: 'That handle is already taken' }), { status: 409 });
     }
+    throw err;
   }
 
   return json({ ok: true });
