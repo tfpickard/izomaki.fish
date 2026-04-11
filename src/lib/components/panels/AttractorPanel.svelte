@@ -35,10 +35,15 @@
     ro.observe(canvas);
     resize();
 
-    function accentColor(): string {
+    function readAccentColor(): string {
       return getComputedStyle(document.documentElement)
         .getPropertyValue('--color-accent').trim() || '#34d399';
     }
+
+    let accentColor = readAccentColor();
+
+    const mo = new MutationObserver(() => { accentColor = readAccentColor(); });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     function draw() {
       const now = Date.now();
@@ -56,15 +61,14 @@
         lastTrailUpdate = now;
       }
 
-      ctx.clearRect(0, 0, width * dpr, height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
       const time = now - startTime;
-      const color = accentColor();
 
       for (const point of trail) {
         const { x, y, opacity } = project(point, time, width, height);
         ctx.globalAlpha = opacity;
-        ctx.fillStyle = color;
+        ctx.fillStyle = accentColor;
         ctx.fillRect(x, y, 1, 1);
       }
 
@@ -76,6 +80,7 @@
     return () => {
       cancelAnimationFrame(rafId);
       ro.disconnect();
+      mo.disconnect();
     };
   });
 </script>

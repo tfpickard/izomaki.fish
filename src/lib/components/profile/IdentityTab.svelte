@@ -14,16 +14,18 @@
   let mastodon = $state(profile.links?.mastodon ?? '');
   let github = $state(profile.links?.github ?? '');
 
-  let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle');
+  let saveStatus = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  let saveError = $state<string | null>(null);
 
   async function save() {
     saveStatus = 'saving';
+    saveError = null;
     const links: UserProfile['links'] = {};
     if (website) links.website = website;
     if (mastodon) links.mastodon = mastodon;
     if (github) links.github = github;
 
-    await fetch('/api/profile', {
+    const res = await fetch('/api/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -32,6 +34,15 @@
         links
       })
     });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      saveStatus = 'error';
+      saveError = body.error ?? 'save failed';
+      setTimeout(() => { saveStatus = 'idle'; saveError = null; }, 3000);
+      return;
+    }
+
     saveStatus = 'saved';
     setTimeout(() => {
       saveStatus = 'idle';
@@ -99,5 +110,7 @@
     <span class="text-[var(--color-fg-faint)]">saving...</span>
   {:else if saveStatus === 'saved'}
     <span class="text-[var(--color-fg-dim)]">saved</span>
+  {:else if saveStatus === 'error'}
+    <span class="text-[var(--color-danger)]">{saveError}</span>
   {/if}
 </div>
