@@ -16,14 +16,12 @@ If the critter has a face (or something that functions like one), the expression
 Use the same spacing convention as the original frame (dots as visible spacers if needed).`;
 
 export async function generateInitFrame(creatureId: string): Promise<void> {
-  const response = await client.messages.create({
+  const ascii = await generateWithRetry(() => client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [{ role: 'user', content: INIT_PROMPT }],
     system: 'Respond with only ASCII art. No explanation. No markdown code fences. No preamble. Just the ASCII art.'
-  });
-
-  const ascii = extractText(response);
+  }));
   const weights = generateRandomWeights();
 
   await sql`
@@ -57,14 +55,12 @@ export async function generateEvolvedFrame(creatureId: string): Promise<void> {
   const parent = rows[0];
   const prompt = EVOLVE_PROMPT_TEMPLATE.replace('{ascii}', parent.ascii);
 
-  const response = await client.messages.create({
+  const ascii = await generateWithRetry(() => client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [{ role: 'user', content: prompt }],
     system: 'Respond with only ASCII art. No explanation. No markdown code fences. No preamble. Just the ASCII art.'
-  });
-
-  const ascii = extractText(response);
+  }));
   const parentWeights = parent.weights as StateVector;
   const weights = deriveWeights(parentWeights);
 
@@ -117,6 +113,43 @@ function extractText(response: Anthropic.Message): string {
     .map(block => block.text)
     .join('\n')
     .replace(/^\n+|\n+$/g, '');
+}
+
+function looksLikeText(line: string): boolean {
+  const trimmed = line.trim();
+  if (trimmed.length < 3) return false;
+  const nonSpace = trimmed.replace(/\s/g, '');
+  if (nonSpace.length === 0) return false;
+  const letters = (nonSpace.match(/[a-zA-Z]/g) ?? []).length;
+  return letters / nonSpace.length > 0.65 && /[a-z]{2,}\s+[a-z]/i.test(trimmed);
+}
+
+function sanitizeAscii(raw: string): string {
+  return raw
+    .split('\n')
+    .filter(line => !/^```[\w]*$/.test(line.trim()))
+    .filter(line => !looksLikeText(line))
+    .slice(0, 50)
+    .map(line => line.slice(0, 80))
+    .join('\n')
+    .replace(/^\n+|\n+$/g, '');
+}
+
+async function generateWithRetry(
+  makeRequest: () => Promise<Anthropic.Message>,
+  retries = 2
+): Promise<string> {
+  const totalAttempts = retries + 1;
+  for (let i = 0; i < totalAttempts; i++) {
+    try {
+      const ascii = sanitizeAscii(extractText(await makeRequest()));
+      const nonEmptyLines = ascii.split('\n').filter(l => l.trim().length > 0).length;
+      if (nonEmptyLines >= 3 || i === totalAttempts - 1) return ascii;
+    } catch (err) {
+      if (i === totalAttempts - 1) throw err;
+    }
+  }
+  throw new Error('generateWithRetry exhausted all attempts');
 }
 
 function generateRandomWeights(): StateVector {

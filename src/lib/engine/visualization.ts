@@ -1,7 +1,7 @@
 import type { AttractorState, CelestialState } from './types';
 import { stepAttractor } from './attractor';
 
-const TRAIL_LENGTH = 500;
+const TRAIL_LENGTH = 2000;
 
 export interface TrailPoint {
   x: number;
@@ -44,10 +44,10 @@ export function project(
   const rx = point.x * cos - point.z * sin;
   const rz = point.x * sin + point.z * cos;
 
-  const scale = 8;
+  const scale = Math.min(width, height) / 8;
   const x = width / 2 + rx * scale;
-  const y = height / 2 - point.y * scale + rz * 2;
-  const opacity = (1 - point.age) * 0.15;
+  const y = height / 2 - point.y * scale + rz * scale * 0.25;
+  const opacity = (1 - point.age) * 0.4;
 
   return { x, y, opacity };
 }
