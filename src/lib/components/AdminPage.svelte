@@ -66,6 +66,19 @@
     window.location.reload();
   }
 
+  let resettingFrames = $state(false);
+
+  async function resetFrames() {
+    if (!confirm('Delete all frames for this creature? Fresh ones will be generated on the next cycle.')) return;
+    resettingFrames = true;
+    try {
+      await fetch('/api/creature/frames', { method: 'DELETE' });
+      frames = [];
+    } finally {
+      resettingFrames = false;
+    }
+  }
+
   async function deleteAccount() {
     if (!confirm('Delete your account, creature, all frames, and all experience? This cannot be undone.')) return;
     await fetch('/api/admin/delete', { method: 'POST' });
@@ -133,6 +146,13 @@
 
   <section class="flex flex-col gap-3 border-t border-[var(--color-border)] pt-8">
     <h2 class="text-[var(--color-fg-dim)] text-xs uppercase tracking-widest">danger</h2>
+    <button
+      onclick={resetFrames}
+      disabled={resettingFrames}
+      class="text-[var(--color-fg-dim)] hover:text-[var(--color-fg)] text-sm text-left w-fit border border-[var(--color-border)] hover:border-[var(--color-fg-faint)] px-3 py-1 transition-colors disabled:opacity-40"
+    >
+      {resettingFrames ? 'Resetting...' : 'Reset Frames'}
+    </button>
     <button
       onclick={resetCreature}
       class="text-[var(--color-fg-dim)] hover:text-[var(--color-fg)] text-sm text-left w-fit border border-[var(--color-border)] hover:border-[var(--color-fg-faint)] px-3 py-1 transition-colors"

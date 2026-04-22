@@ -6,7 +6,7 @@
   import LandingPage from '$lib/components/LandingPage.svelte';
   import NavBar from '$lib/components/nav/NavBar.svelte';
   import AdminPanel from '$lib/components/AdminPanel.svelte';
-  import AttractorPanel from '$lib/components/panels/AttractorPanel.svelte';
+  import AttractorBackground from '$lib/components/AttractorBackground.svelte';
   import MoodPanel from '$lib/components/panels/MoodPanel.svelte';
   import StatusBar from '$lib/components/panels/StatusBar.svelte';
 
@@ -174,13 +174,14 @@
 {#if !data.user}
   <LandingPage />
 {:else}
-  <div class="flex flex-col h-screen overflow-hidden">
+  <AttractorBackground />
+  <div class="flex flex-col h-screen overflow-hidden relative" style="z-index: 1;">
     <NavBar
       {profile}
       creatureLastGeneratedAt={data.creature?.last_generated_at ?? null}
     />
 
-    <div class="flex-1 min-h-0 grid lg:grid-cols-[3fr_2fr_1fr] grid-cols-1 overflow-hidden">
+    <div class="flex-1 min-h-0 grid lg:grid-cols-[1fr_auto] grid-cols-1 overflow-hidden">
       <!-- Creature column -->
       <div class="relative overflow-hidden border-r border-[var(--color-border)]">
         <CreatureField
@@ -191,15 +192,8 @@
         />
       </div>
 
-      <!-- Attractor column -->
-      <div class="overflow-hidden border-r border-[var(--color-border)]">
-        <AttractorPanel />
-      </div>
-
-      <!-- Mood column -->
-      <div class="overflow-hidden">
-        <MoodPanel />
-      </div>
+      <!-- Mood column (collapsible) -->
+      <MoodPanel isOwner={!!data.user} frames={data.frames} />
     </div>
 
     {#if data.creature}

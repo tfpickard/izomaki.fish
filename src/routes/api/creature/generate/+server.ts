@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { sql } from '$lib/server/db';
 import { verifySessionToken, COOKIE_NAME } from '$lib/server/session';
 import { generateEvolvedFrame } from '$lib/server/generation';
+import { isAdmin } from '$lib/server/admin';
 import type { RequestHandler } from './$types';
 
 const RATE_LIMIT_MS = 5 * 60 * 1000;
@@ -25,8 +26,9 @@ export const POST: RequestHandler = async ({ cookies }) => {
   }
 
   const creature = rows[0];
+  const adminUser = await isAdmin(session.userId);
 
-  if (creature.last_generated_at) {
+  if (!adminUser && creature.last_generated_at) {
     const elapsed = Date.now() - new Date(creature.last_generated_at).getTime();
     if (elapsed < RATE_LIMIT_MS) {
       const retryAfter = Math.ceil((RATE_LIMIT_MS - elapsed) / 1000);
