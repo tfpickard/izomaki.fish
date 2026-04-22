@@ -95,11 +95,16 @@
 
     function draw(now: number) {
       if (!offCtx) return;
-      const dt = Math.min((now - lastTime) / (1000 / 60), 4);
+      // Real elapsed frames (unclamped); used for decay and throb so they catch
+      // up correctly after a long tab sleep
+      const rawDt = (now - lastTime) / (1000 / 60);
+      // Clamped copy only for the attractor stepping loop -- we don't want to
+      // run 18000 steps at once on resume
+      const stepDt = Math.min(rawDt, 4);
       lastTime = now;
 
       const celestial = get(celestialState);
-      const steps = Math.round(STEPS_PER_FRAME * dt);
+      const steps = Math.round(STEPS_PER_FRAME * stepDt);
 
       // Step the attractor, recording last-visit time and incrementing density
       for (let i = 0; i < steps; i++) {
@@ -112,8 +117,9 @@
         }
       }
 
-      // Decay density and track running max for normalization
-      const decay = Math.pow(DECAY, dt);
+      // Decay density with real elapsed time so stale state doesn't linger
+      // after a long tab sleep
+      const decay = Math.pow(DECAY, rawDt);
       let newMax = 0;
       for (let i = 0; i < visitCount.length; i++) {
         visitCount[i] *= decay;
@@ -133,6 +139,9 @@
         }
         const age = now - visited;
         if (age >= MAX_AGE_MS) {
+          // Reset aged-out cells so stale counts stop influencing maxVisitCount
+          lastVisit[i] = 0;
+          visitCount[i] = 0;
           data[idx] = data[idx + 1] = data[idx + 2] = data[idx + 3] = 0;
           continue;
         }
@@ -158,7 +167,7 @@
       ctx.clearRect(0, 0, width, height);
 
       // Throb via ctx.globalAlpha -- avoids DOM style recalculation
-      const throbAlpha = Math.pow(THROB_SMOOTH, dt);
+      const throbAlpha = Math.pow(THROB_SMOOTH, rawDt);
       const zNorm = Math.max(0, Math.min(1, (attractorPos.z - Z_MIN) / (Z_MAX - Z_MIN)));
       throbEma = throbEma * throbAlpha + zNorm * (1 - throbAlpha);
       ctx.globalAlpha = 0.65 + 0.35 * throbEma;
