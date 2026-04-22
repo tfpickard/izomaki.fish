@@ -77,7 +77,6 @@
   }
 
   $effect(() => {
-    if (data.frames.length === 0) return;
     const incoming = new Map(data.frames.map(f => [f.id, {
       id: f.id,
       ascii: f.ascii,

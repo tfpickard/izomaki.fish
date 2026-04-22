@@ -8,6 +8,7 @@
   const GRID_W = 240;
   const GRID_H = 160;
   const STEPS = 50000;
+  const CHUNK = 5000;
   const HEATMAP_INTERVAL = 20000;
 
   // Fixed 30-degree rotation for stable attractor portrait
@@ -27,30 +28,49 @@
     return { px, py };
   }
 
-  function buildHeatmap(): Float32Array {
+  function scheduleHeatmap(onDone: (grid: Float32Array) => void) {
     const grid = new Float32Array(GRID_W * GRID_H);
     let state = { ...get(attractorState) };
     const celestial = get(celestialState);
+    let done = 0;
 
-    for (let i = 0; i < STEPS; i++) {
-      state = stepAttractor(state, celestial);
-      const { px, py } = projectPoint(state.x, state.y, state.z);
-      if (px >= 0 && px < GRID_W && py >= 0 && py < GRID_H) {
-        grid[py * GRID_W + px] += 1;
+    function step() {
+      const end = Math.min(done + CHUNK, STEPS);
+      while (done < end) {
+        state = stepAttractor(state, celestial);
+        const { px, py } = projectPoint(state.x, state.y, state.z);
+        if (px >= 0 && px < GRID_W && py >= 0 && py < GRID_H) {
+          grid[py * GRID_W + px] += 1;
+        }
+        done++;
+      }
+      if (done < STEPS) {
+        if ('requestIdleCallback' in globalThis) {
+          requestIdleCallback(step);
+        } else {
+          setTimeout(step, 0);
+        }
+      } else {
+        onDone(grid);
       }
     }
 
-    return grid;
+    if ('requestIdleCallback' in globalThis) {
+      requestIdleCallback(step);
+    } else {
+      setTimeout(step, 0);
+    }
   }
 
   function renderToOffscreen(
     grid: Float32Array,
-    offscreen: OffscreenCanvas,
+    offscreen: OffscreenCanvas | HTMLCanvasElement,
     r: number,
     g: number,
     b: number
   ) {
-    const ctx = offscreen.getContext('2d')!;
+    const ctx = offscreen.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+    if (!ctx) return;
     const imgData = ctx.createImageData(GRID_W, GRID_H);
     const data = imgData.data;
 
@@ -79,6 +99,16 @@
     return [52, 211, 153]; // fallback: #34d399
   }
 
+  function makeOffscreen(w: number, h: number): OffscreenCanvas | HTMLCanvasElement {
+    if (typeof OffscreenCanvas !== 'undefined') {
+      return new OffscreenCanvas(w, h);
+    }
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    return c;
+  }
+
   let canvas: HTMLCanvasElement;
 
   onMount(() => {
@@ -87,8 +117,7 @@
     const ctx = rawCtx;
     let rafId: number;
 
-    const offscreen = new OffscreenCanvas(GRID_W, GRID_H);
-    let grid = buildHeatmap();
+    const offscreen = makeOffscreen(GRID_W, GRID_H);
 
     function readAccentColor(): string {
       return getComputedStyle(document.documentElement)
@@ -96,11 +125,13 @@
     }
 
     let [r, g, b] = parseAccentRgb(readAccentColor());
-    renderToOffscreen(grid, offscreen, r, g, b);
+
+    scheduleHeatmap(grid => renderToOffscreen(grid, offscreen, r, g, b));
 
     const mo = new MutationObserver(() => {
       [r, g, b] = parseAccentRgb(readAccentColor());
-      renderToOffscreen(grid, offscreen, r, g, b);
+      // re-render current offscreen pixels with new color on next idle
+      scheduleHeatmap(grid => renderToOffscreen(grid, offscreen, r, g, b));
     });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -120,8 +151,7 @@
     function draw() {
       const now = Date.now();
       if (now - lastHeatmap >= HEATMAP_INTERVAL) {
-        grid = buildHeatmap();
-        renderToOffscreen(grid, offscreen, r, g, b);
+        scheduleHeatmap(grid => renderToOffscreen(grid, offscreen, r, g, b));
         lastHeatmap = now;
       }
 

@@ -30,7 +30,7 @@
   function save() {
     if (editingFrame) {
       frameStore.update(editingFrame.id, { ascii, weights: { ...weights } });
-      onClear();
+      clear();
     } else {
       frameStore.add({
         id: crypto.randomUUID(),

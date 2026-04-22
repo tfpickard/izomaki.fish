@@ -19,22 +19,25 @@
   {:else}
     {#each $frameStore as frame (frame.id)}
       <div
-        class="group relative flex items-start gap-2 py-1 border-b border-[var(--color-border)] cursor-pointer"
+        class="group relative flex items-start gap-2 py-1 border-b border-[var(--color-border)]"
         onmouseenter={() => hoveredId = frame.id}
         onmouseleave={() => hoveredId = null}
-        onclick={() => onEdit(frame)}
-        role="button"
-        tabindex="0"
-        onkeydown={(e) => e.key === 'Enter' && onEdit(frame)}
+        role="listitem"
       >
-        <span class="flex-1 truncate {frame.id === editingId ? 'text-[var(--color-fg)]' : 'text-[var(--color-fg-dim)]'}">
-          {frame.ascii.split('\n')[0].slice(0, 40)}
-        </span>
-        <span class="text-[var(--color-fg-faint)] shrink-0 text-[10px]">
-          {PARAMETER_KEYS.map(k => frame.weights[k].toFixed(1)).join(' ')}
-        </span>
         <button
-          onclick={(e) => { e.stopPropagation(); frameStore.remove(frame.id); }}
+          class="flex-1 flex items-start gap-2 text-left min-w-0"
+          onclick={() => onEdit(frame)}
+        >
+          <span class="flex-1 truncate {frame.id === editingId ? 'text-[var(--color-fg)]' : 'text-[var(--color-fg-dim)]'}">
+            {frame.ascii.split('\n')[0].slice(0, 40)}
+          </span>
+          <span class="text-[var(--color-fg-faint)] shrink-0 text-[10px]">
+            {PARAMETER_KEYS.map(k => frame.weights[k].toFixed(1)).join(' ')}
+          </span>
+        </button>
+        <button
+          onclick={() => frameStore.remove(frame.id)}
+          aria-label="delete frame"
           class="text-[var(--color-danger)] hover:opacity-80 shrink-0 px-1"
         >
           ×
