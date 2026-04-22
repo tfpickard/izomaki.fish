@@ -124,7 +124,7 @@ function looksLikeText(line: string): boolean {
   return letters / nonSpace.length > 0.65 && /[a-z]{2,}\s+[a-z]/i.test(trimmed);
 }
 
-function sanitizeAscii(raw: string): string {
+export function sanitizeAscii(raw: string): string {
   return raw
     .split('\n')
     .filter(line => !/^```[\w]*$/.test(line.trim()))

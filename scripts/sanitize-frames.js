@@ -35,20 +35,41 @@ function sanitizeAscii(raw) {
     .replace(/^\n+|\n+$/g, '');
 }
 
-const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+const client = new Client({ connectionString: url });
 await client.connect();
 
 const { rows } = await client.query('SELECT id, ascii FROM frames');
 console.log(`Checking ${rows.length} frames...`);
 
-let sanitized = 0;
+const updates = [];
 for (const row of rows) {
   const clean = sanitizeAscii(row.ascii);
-  if (clean !== row.ascii) {
-    await client.query('UPDATE frames SET ascii = $1 WHERE id = $2', [clean, row.id]);
-    sanitized++;
+  if (clean !== row.ascii) updates.push({ id: row.id, ascii: clean });
+}
+
+if (updates.length > 0) {
+  const BATCH = 500;
+  await client.query('BEGIN');
+  try {
+    for (let i = 0; i < updates.length; i += BATCH) {
+      const batch = updates.slice(i, i + BATCH);
+      const values = [];
+      const placeholders = batch.map((u, idx) => {
+        values.push(u.id, u.ascii);
+        const o = idx * 2;
+        return `($${o + 1}::uuid, $${o + 2}::text)`;
+      }).join(', ');
+      await client.query(
+        `UPDATE frames AS f SET ascii = v.ascii FROM (VALUES ${placeholders}) AS v(id, ascii) WHERE f.id = v.id`,
+        values
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
   }
 }
 
-console.log(`Done. Sanitized ${sanitized} / ${rows.length} frames.`);
+console.log(`Done. Sanitized ${updates.length} / ${rows.length} frames.`);
 await client.end();

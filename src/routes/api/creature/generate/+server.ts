@@ -26,11 +26,10 @@ export const POST: RequestHandler = async ({ cookies }) => {
   }
 
   const creature = rows[0];
-  const adminUser = await isAdmin(session.userId);
 
-  if (!adminUser && creature.last_generated_at) {
+  if (creature.last_generated_at) {
     const elapsed = Date.now() - new Date(creature.last_generated_at).getTime();
-    if (elapsed < RATE_LIMIT_MS) {
+    if (elapsed < RATE_LIMIT_MS && !await isAdmin(session.userId)) {
       const retryAfter = Math.ceil((RATE_LIMIT_MS - elapsed) / 1000);
       return json({ error: 'Rate limited', retryAfter }, {
         status: 429,

@@ -67,13 +67,21 @@
   }
 
   let resettingFrames = $state(false);
+  let resetFramesError = $state<string | null>(null);
 
   async function resetFrames() {
     if (!confirm('Delete all frames for this creature? Fresh ones will be generated on the next cycle.')) return;
     resettingFrames = true;
+    resetFramesError = null;
     try {
-      await fetch('/api/creature/frames', { method: 'DELETE' });
+      const res = await fetch('/api/creature/frames', { method: 'DELETE' });
+      if (!res.ok) {
+        resetFramesError = 'Failed to delete frames. Please try again.';
+        return;
+      }
       frames = [];
+    } catch {
+      resetFramesError = 'Failed to delete frames. Please try again.';
     } finally {
       resettingFrames = false;
     }
@@ -153,6 +161,9 @@
     >
       {resettingFrames ? 'Resetting...' : 'Reset Frames'}
     </button>
+    {#if resetFramesError}
+      <span class="text-[var(--color-danger)] text-xs">{resetFramesError}</span>
+    {/if}
     <button
       onclick={resetCreature}
       class="text-[var(--color-fg-dim)] hover:text-[var(--color-fg)] text-sm text-left w-fit border border-[var(--color-border)] hover:border-[var(--color-fg-faint)] px-3 py-1 transition-colors"

@@ -9,11 +9,11 @@
   let rafId: number;
 
   const startTime = Date.now();
-  let trail = computeTrail(get(attractorState), get(celestialState), 5000);
-  let lastTrailUpdate = 0;
   const TRAIL_UPDATE_INTERVAL = 1000;
 
   onMount(() => {
+    let trail = computeTrail(get(attractorState), get(celestialState), 5000);
+    let lastTrailUpdate = 0;
     const rawCtx = canvas.getContext('2d');
     if (!rawCtx) return;
     const ctx = rawCtx;

@@ -23,6 +23,7 @@
   let editingFrameId = $state<string | null>(null);
   let editDraft = $state('');
   let saving = $state(false);
+  let saveError = $state<string | null>(null);
   let localFrames = $state(frames);
 
   $effect(() => { localFrames = frames; });
@@ -98,6 +99,7 @@
 
   async function saveEdit(frameId: string) {
     saving = true;
+    saveError = null;
     try {
       const res = await fetch(`/api/creature/frame/${frameId}`, {
         method: 'PATCH',
@@ -108,7 +110,11 @@
         localFrames = localFrames.map(f => f.id === frameId ? { ...f, ascii: editDraft } : f);
         editingFrameId = null;
         editDraft = '';
+      } else {
+        saveError = 'Save failed. Please try again.';
       }
+    } catch {
+      saveError = 'Save failed. Please try again.';
     } finally {
       saving = false;
     }
@@ -245,7 +251,7 @@
                         bind:value={editDraft}
                         spellcheck={false}
                       ></textarea>
-                      <div class="flex gap-2 mt-1">
+                      <div class="flex gap-2 mt-1 items-center flex-wrap">
                         <button
                           class="font-mono text-xs text-[var(--color-accent)] hover:opacity-70 cursor-pointer disabled:opacity-40"
                           disabled={saving}
@@ -255,6 +261,9 @@
                           class="font-mono text-xs text-[var(--color-fg-faint)] hover:text-[var(--color-fg)] cursor-pointer"
                           onclick={cancelEdit}
                         >cancel</button>
+                        {#if saveError}
+                          <span class="font-mono text-xs text-[var(--color-danger)]">{saveError}</span>
+                        {/if}
                       </div>
                     {:else}
                       <pre class="font-mono text-xs text-[var(--color-accent)] opacity-80 leading-tight overflow-x-auto whitespace-pre">{frame.ascii}</pre>
