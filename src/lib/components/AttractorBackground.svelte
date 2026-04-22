@@ -1,22 +1,139 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { computeTrail, project } from '$lib/engine/visualization';
+  import { stepAttractor } from '$lib/engine/attractor';
   import { attractorState } from '$lib/stores/creature';
   import { celestialState } from '$lib/stores/attractor';
 
-  let canvas: HTMLCanvasElement;
-  let rafId: number;
+  const GRID_W = 240;
+  const GRID_H = 160;
+  const STEPS = 50000;
+  const CHUNK = 5000;
+  const HEATMAP_INTERVAL = 20000;
 
-  const startTime = Date.now();
-  const TRAIL_UPDATE_INTERVAL = 1000;
+  // Fixed 30-degree rotation for stable attractor portrait
+  const COS = Math.cos(Math.PI / 6);
+  const SIN = Math.sin(Math.PI / 6);
+
+  // Sprott-B coordinate ranges for projection
+  const X_MIN = -2, X_MAX = 2;
+  const Y_MIN = -2, Y_MAX = 2;
+  const Z_MIN = -1, Z_MAX = 2;
+
+  function projectPoint(x: number, y: number, z: number): { px: number; py: number } {
+    const rx = x * COS - z * SIN;
+    const rz = x * SIN + z * COS;
+    const px = Math.floor(((rx - X_MIN) / (X_MAX - X_MIN)) * (GRID_W - 1));
+    const py = Math.floor(((Y_MAX - (y + rz * 0.25)) / (Y_MAX - Y_MIN + (Z_MAX - Z_MIN) * 0.25)) * (GRID_H - 1));
+    return { px, py };
+  }
+
+  function scheduleHeatmap(onDone: (grid: Float32Array) => void) {
+    const grid = new Float32Array(GRID_W * GRID_H);
+    let state = { ...get(attractorState) };
+    const celestial = get(celestialState);
+    let done = 0;
+
+    function step() {
+      const end = Math.min(done + CHUNK, STEPS);
+      while (done < end) {
+        state = stepAttractor(state, celestial);
+        const { px, py } = projectPoint(state.x, state.y, state.z);
+        if (px >= 0 && px < GRID_W && py >= 0 && py < GRID_H) {
+          grid[py * GRID_W + px] += 1;
+        }
+        done++;
+      }
+      if (done < STEPS) {
+        if ('requestIdleCallback' in globalThis) {
+          requestIdleCallback(step);
+        } else {
+          setTimeout(step, 0);
+        }
+      } else {
+        onDone(grid);
+      }
+    }
+
+    if ('requestIdleCallback' in globalThis) {
+      requestIdleCallback(step);
+    } else {
+      setTimeout(step, 0);
+    }
+  }
+
+  function renderToOffscreen(
+    grid: Float32Array,
+    offscreen: OffscreenCanvas | HTMLCanvasElement,
+    r: number,
+    g: number,
+    b: number
+  ) {
+    const ctx = offscreen.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+    if (!ctx) return;
+    const imgData = ctx.createImageData(GRID_W, GRID_H);
+    const data = imgData.data;
+
+    let max = 0;
+    for (let i = 0; i < grid.length; i++) {
+      if (grid[i] > max) max = grid[i];
+    }
+    if (max === 0) return;
+
+    const logMax = Math.log(1 + max);
+    for (let i = 0; i < grid.length; i++) {
+      const density = grid[i] > 0 ? Math.log(1 + grid[i]) / logMax : 0;
+      const idx = i * 4;
+      data[idx]     = r;
+      data[idx + 1] = g;
+      data[idx + 2] = b;
+      data[idx + 3] = Math.round(density * 38); // max ~15% opacity
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  function parseAccentRgb(color: string): [number, number, number] {
+    const m = color.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (m) return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+    return [52, 211, 153]; // fallback: #34d399
+  }
+
+  function makeOffscreen(w: number, h: number): OffscreenCanvas | HTMLCanvasElement {
+    if (typeof OffscreenCanvas !== 'undefined') {
+      return new OffscreenCanvas(w, h);
+    }
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    return c;
+  }
+
+  let canvas: HTMLCanvasElement;
 
   onMount(() => {
-    let trail = computeTrail(get(attractorState), get(celestialState), 5000);
-    let lastTrailUpdate = 0;
     const rawCtx = canvas.getContext('2d');
     if (!rawCtx) return;
     const ctx = rawCtx;
+    let rafId: number;
+
+    const offscreen = makeOffscreen(GRID_W, GRID_H);
+
+    function readAccentColor(): string {
+      return getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-accent').trim() || '#34d399';
+    }
+
+    let [r, g, b] = parseAccentRgb(readAccentColor());
+
+    scheduleHeatmap(grid => renderToOffscreen(grid, offscreen, r, g, b));
+
+    const mo = new MutationObserver(() => {
+      [r, g, b] = parseAccentRgb(readAccentColor());
+      // re-render current offscreen pixels with new color on next idle
+      scheduleHeatmap(grid => renderToOffscreen(grid, offscreen, r, g, b));
+    });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
@@ -29,37 +146,21 @@
     ro.observe(document.documentElement);
     resize();
 
-    function readAccentColor(): string {
-      return getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-accent').trim() || '#34d399';
-    }
-
-    let accentColor = readAccentColor();
-
-    const mo = new MutationObserver(() => { accentColor = readAccentColor(); });
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    let lastHeatmap = Date.now();
 
     function draw() {
       const now = Date.now();
-      const dpr = window.devicePixelRatio || 1;
+      if (now - lastHeatmap >= HEATMAP_INTERVAL) {
+        scheduleHeatmap(grid => renderToOffscreen(grid, offscreen, r, g, b));
+        lastHeatmap = now;
+      }
+
       const width = window.innerWidth;
       const height = window.innerHeight;
-
-      if (now - lastTrailUpdate >= TRAIL_UPDATE_INTERVAL) {
-        trail = computeTrail(get(attractorState), get(celestialState), 5000);
-        lastTrailUpdate = now;
-      }
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
-      const time = now - startTime;
-
-      for (const point of trail) {
-        const { x, y, opacity } = project(point, time, width, height);
-        ctx.globalAlpha = opacity * 0.3;
-        ctx.fillStyle = accentColor;
-        ctx.fillRect(x, y, 1, 1);
-      }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(offscreen, 0, 0, width, height);
 
       rafId = requestAnimationFrame(draw);
     }
@@ -77,5 +178,5 @@
 <canvas
   bind:this={canvas}
   class="fixed inset-0 w-full h-full pointer-events-none"
-  style="z-index: 0; image-rendering: pixelated;"
+  style="z-index: 0;"
 ></canvas>

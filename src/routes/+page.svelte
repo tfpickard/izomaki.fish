@@ -77,17 +77,19 @@
   }
 
   $effect(() => {
-    if (data.frames.length > 0) {
-      const mapped: Frame[] = data.frames.map(f => ({
-        id: f.id,
-        ascii: f.ascii,
-        weights: f.weights as Frame['weights'],
-        createdAt: new Date(f.created_at).getTime()
-      }));
-      frameStore.reset();
-      for (const frame of mapped) {
-        frameStore.add(frame);
-      }
+    const incoming = new Map(data.frames.map(f => [f.id, {
+      id: f.id,
+      ascii: f.ascii,
+      weights: f.weights as Frame['weights'],
+      createdAt: new Date(f.created_at).getTime()
+    }]));
+    const current = get(frameStore);
+    const currentIds = new Set(current.map(f => f.id));
+    for (const id of currentIds) {
+      if (!incoming.has(id)) frameStore.remove(id);
+    }
+    for (const frame of incoming.values()) {
+      frameStore.upsert(frame);
     }
   });
 

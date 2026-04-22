@@ -3,6 +3,7 @@
   import FrameEditor from './FrameEditor.svelte';
   import FrameLibrary from './FrameLibrary.svelte';
   import CreatureManager from './CreatureManager.svelte';
+  import type { Frame } from '$lib/engine/types';
 
   interface CreatureData {
     id: string;
@@ -20,6 +21,7 @@
   let { allCreatures, maxCreatures }: Props = $props();
 
   let open = $state(false);
+  let editingFrame = $state<Frame | null>(null);
 
   type Section = 'creatures' | 'editor' | 'library';
   let collapsed = $state<Record<Section, boolean>>({
@@ -30,6 +32,15 @@
 
   function toggle(section: Section) {
     collapsed[section] = !collapsed[section];
+  }
+
+  function onEdit(frame: Frame) {
+    editingFrame = frame;
+    collapsed.editor = false;
+  }
+
+  function onClear() {
+    editingFrame = null;
   }
 </script>
 
@@ -54,9 +65,9 @@
               {#if section.key === 'creatures'}
                 <CreatureManager {allCreatures} {maxCreatures} />
               {:else if section.key === 'editor'}
-                <FrameEditor />
+                <FrameEditor {editingFrame} {onClear} />
               {:else if section.key === 'library'}
-                <FrameLibrary />
+                <FrameLibrary {onEdit} editingId={editingFrame?.id ?? null} />
               {/if}
             </div>
           {/if}

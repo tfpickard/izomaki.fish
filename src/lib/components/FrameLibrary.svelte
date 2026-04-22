@@ -1,6 +1,14 @@
 <script lang="ts">
   import { frameStore } from '$lib/stores/frames';
   import { PARAMETER_KEYS } from '$lib/engine/types';
+  import type { Frame } from '$lib/engine/types';
+
+  interface Props {
+    onEdit: (frame: Frame) => void;
+    editingId: string | null;
+  }
+
+  let { onEdit, editingId }: Props = $props();
 
   let hoveredId = $state<string | null>(null);
 </script>
@@ -16,14 +24,20 @@
         onmouseleave={() => hoveredId = null}
         role="listitem"
       >
-        <span class="flex-1 text-[var(--color-fg-dim)] truncate">
-          {frame.ascii.split('\n')[0].slice(0, 40)}
-        </span>
-        <span class="text-[var(--color-fg-faint)] shrink-0 text-[10px]">
-          {PARAMETER_KEYS.map(k => frame.weights[k].toFixed(1)).join(' ')}
-        </span>
+        <button
+          class="flex-1 flex items-start gap-2 text-left min-w-0"
+          onclick={() => onEdit(frame)}
+        >
+          <span class="flex-1 truncate {frame.id === editingId ? 'text-[var(--color-fg)]' : 'text-[var(--color-fg-dim)]'}">
+            {frame.ascii.split('\n')[0].slice(0, 40)}
+          </span>
+          <span class="text-[var(--color-fg-faint)] shrink-0 text-[10px]">
+            {PARAMETER_KEYS.map(k => frame.weights[k].toFixed(1)).join(' ')}
+          </span>
+        </button>
         <button
           onclick={() => frameStore.remove(frame.id)}
+          aria-label="delete frame"
           class="text-[var(--color-danger)] hover:opacity-80 shrink-0 px-1"
         >
           ×
