@@ -2,8 +2,18 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { stepAttractor } from '$lib/engine/attractor';
+  import type { AttractorState } from '$lib/engine/types';
   import { attractorState } from '$lib/stores/creature';
   import { celestialState } from '$lib/stores/attractor';
+
+  // Healthy Sprott-B trajectories stay within ~[-2, 2]^3; allow headroom to 3
+  // before treating state as divergent. NaN/Infinity are always poison.
+  function isSane(p: AttractorState): boolean {
+    return (
+      Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) &&
+      Math.abs(p.x) < 3 && Math.abs(p.y) < 3 && Math.abs(p.z) < 3
+    );
+  }
 
   const GRID_W = 40;
   const GRID_H = 25;
@@ -104,6 +114,16 @@
       lastTime = now;
 
       const celestial = get(celestialState);
+
+      // If the local trajectory has diverged or been poisoned by NaN/Infinity,
+      // reseed from the shared store (kept alive by +page.svelte). Without
+      // this, projected points stay NaN forever, no cell is ever updated, and
+      // the grid fades to full black within MAX_AGE_MS.
+      if (!isSane(attractorPos)) {
+        const fallback = get(attractorState);
+        attractorPos = isSane(fallback) ? { ...fallback } : { x: 0.1, y: 0, z: 0 };
+      }
+
       const steps = Math.round(STEPS_PER_FRAME * stepDt);
 
       // Step the attractor, recording last-visit time and incrementing density
