@@ -33,6 +33,23 @@ function createFrameStore() {
         return next;
       });
     },
+    update(id: string, partial: Partial<Omit<Frame, 'id'>>) {
+      update(frames => {
+        const next = frames.map(f => f.id === id ? { ...f, ...partial } : f);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    },
+    upsert(frame: Frame) {
+      update(frames => {
+        const idx = frames.findIndex(f => f.id === frame.id);
+        const next = idx >= 0
+          ? frames.map((f, i) => i === idx ? frame : f)
+          : [...frames, frame];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    },
     reset() {
       localStorage.removeItem(STORAGE_KEY);
       set([]);

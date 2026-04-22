@@ -4,8 +4,8 @@
     {
       "name": "izomaki",
       "runtimeExecutable": "/opt/homebrew/bin/node",
-      "runtimeArgs": ["/Users/tom/src/izomaki.fish.claude/izomaki/node_modules/.bin/vite", "dev", "--port", "5173"],
-      "cwd": "/Users/tom/src/izomaki.fish.claude/izomaki",
+      "runtimeArgs": ["/Users/tom/src/izomaki.fish.claude/node_modules/.bin/vite", "dev", "--port", "5173"],
+      "cwd": "/Users/tom/src/izomaki.fish.claude",
       "port": 5173
     }
   ]

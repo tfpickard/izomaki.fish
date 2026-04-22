@@ -1,6 +1,14 @@
 <script lang="ts">
   import { frameStore } from '$lib/stores/frames';
   import { PARAMETER_KEYS } from '$lib/engine/types';
+  import type { Frame } from '$lib/engine/types';
+
+  interface Props {
+    onEdit: (frame: Frame) => void;
+    editingId: string | null;
+  }
+
+  let { onEdit, editingId }: Props = $props();
 
   let hoveredId = $state<string | null>(null);
 </script>
@@ -11,19 +19,22 @@
   {:else}
     {#each $frameStore as frame (frame.id)}
       <div
-        class="group relative flex items-start gap-2 py-1 border-b border-[var(--color-border)]"
+        class="group relative flex items-start gap-2 py-1 border-b border-[var(--color-border)] cursor-pointer"
         onmouseenter={() => hoveredId = frame.id}
         onmouseleave={() => hoveredId = null}
-        role="listitem"
+        onclick={() => onEdit(frame)}
+        role="button"
+        tabindex="0"
+        onkeydown={(e) => e.key === 'Enter' && onEdit(frame)}
       >
-        <span class="flex-1 text-[var(--color-fg-dim)] truncate">
+        <span class="flex-1 truncate {frame.id === editingId ? 'text-[var(--color-fg)]' : 'text-[var(--color-fg-dim)]'}">
           {frame.ascii.split('\n')[0].slice(0, 40)}
         </span>
         <span class="text-[var(--color-fg-faint)] shrink-0 text-[10px]">
           {PARAMETER_KEYS.map(k => frame.weights[k].toFixed(1)).join(' ')}
         </span>
         <button
-          onclick={() => frameStore.remove(frame.id)}
+          onclick={(e) => { e.stopPropagation(); frameStore.remove(frame.id); }}
           class="text-[var(--color-danger)] hover:opacity-80 shrink-0 px-1"
         >
           ×
