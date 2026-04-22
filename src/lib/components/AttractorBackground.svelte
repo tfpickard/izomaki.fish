@@ -56,6 +56,8 @@
     const buffer = new Float32Array(GRID_W * GRID_H);
     let bufferMax = 1;
     let attractorPos = { ...get(attractorState) };
+    // Pre-allocated once; reused every frame to avoid GC churn
+    const imgData = offCtx.createImageData(GRID_W, GRID_H);
 
     function readAccentColor(): string {
       return getComputedStyle(document.documentElement)
@@ -79,13 +81,19 @@
     resize();
 
     let throbEma = 0.5;
+    let lastTime = performance.now();
 
-    function draw() {
+    // RAF passes a DOMHighResTimeStamp; we use it for frame-rate-independent scaling
+    function draw(now: number) {
       if (!offCtx) return;
-      const celestial = get(celestialState);
+      // dt is a frame multiplier (1.0 = 60fps), capped to avoid large jumps after tab wake
+      const dt = Math.min((now - lastTime) / (1000 / 60), 4);
+      lastTime = now;
 
-      // Step the attractor and accumulate into buffer
-      for (let i = 0; i < STEPS_PER_FRAME; i++) {
+      const celestial = get(celestialState);
+      const steps = Math.round(STEPS_PER_FRAME * dt);
+
+      for (let i = 0; i < steps; i++) {
         attractorPos = stepAttractor(attractorPos, celestial);
         const { px, py } = projectPoint(attractorPos.x, attractorPos.y, attractorPos.z);
         if (px >= 0 && px < GRID_W && py >= 0 && py < GRID_H) {
@@ -93,24 +101,27 @@
         }
       }
 
-      // Decay and track running max
+      // Decay scaled to elapsed time so half-life is display-rate independent
+      const decay = Math.pow(DECAY, dt);
       let newMax = 0;
       for (let i = 0; i < buffer.length; i++) {
-        buffer[i] *= DECAY;
+        buffer[i] *= decay;
         if (buffer[i] > newMax) newMax = buffer[i];
       }
       if (newMax > 0) bufferMax = newMax;
 
-      // Render density to offscreen with heatmap color gradient
-      const imgData = offCtx.createImageData(GRID_W, GRID_H);
+      // Render density to pre-allocated ImageData with heatmap color gradient
       const data = imgData.data;
       const logMax = Math.log(1 + bufferMax);
 
       for (let i = 0; i < buffer.length; i++) {
-        const density = buffer[i] > 0 ? Math.log(1 + buffer[i]) / logMax : 0;
-        if (density < 0.04) continue; // skip empty cells
-
         const idx = i * 4;
+        const density = buffer[i] > 0 ? Math.log(1 + buffer[i]) / logMax : 0;
+        if (density < 0.04) {
+          // Zero out stale pixels from previous frames
+          data[idx] = data[idx + 1] = data[idx + 2] = data[idx + 3] = 0;
+          continue;
+        }
         if (density < 0.5) {
           // Transparent dark → full accent color
           const t = (density - 0.04) / 0.46;
@@ -130,16 +141,18 @@
 
       offCtx.putImageData(imgData, 0, 0);
 
-      // Draw offscreen → main canvas (blur applied via CSS on element)
+      // Draw offscreen → main canvas (blur applied via CSS filter on element)
       const width = window.innerWidth;
       const height = window.innerHeight;
       ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(offscreen, 0, 0, width, height);
 
-      // Throb: smooth EMA of attractor z-coordinate drives opacity
+      // Throb via ctx.globalAlpha -- avoids DOM style recalculation each frame
+      const throbAlpha = Math.pow(THROB_SMOOTH, dt);
       const zNorm = Math.max(0, Math.min(1, (attractorPos.z - Z_MIN) / (Z_MAX - Z_MIN)));
-      throbEma = throbEma * THROB_SMOOTH + zNorm * (1 - THROB_SMOOTH);
-      canvas.style.opacity = String(0.65 + 0.35 * throbEma);
+      throbEma = throbEma * throbAlpha + zNorm * (1 - throbAlpha);
+      ctx.globalAlpha = 0.65 + 0.35 * throbEma;
+      ctx.drawImage(offscreen, 0, 0, width, height);
+      ctx.globalAlpha = 1;
 
       rafId = requestAnimationFrame(draw);
     }
