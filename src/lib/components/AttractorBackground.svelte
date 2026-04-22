@@ -5,13 +5,21 @@
   import { attractorState } from '$lib/stores/creature';
   import { celestialState } from '$lib/stores/attractor';
 
-  const GRID_W = 120;
-  const GRID_H = 80;
+  const GRID_W = 40;
+  const GRID_H = 25;
   const STEPS_PER_FRAME = 300;
   // Per-frame decay: half-life ~23s at 60fps
   const DECAY = 0.9995;
   // EMA smoothing for throb: half-life ~6s at 60fps
   const THROB_SMOOTH = 0.998;
+  // Cells fully fade 30s after last visit
+  const MAX_AGE_MS = 30_000;
+  // Peak cell opacity (out of 255)
+  const ALPHA_SCALE = 200;
+  // Muted target for high-density cells (cool grey, slight blue)
+  const MUTED_R = 80;
+  const MUTED_G = 80;
+  const MUTED_B = 90;
 
   const COS = Math.cos(Math.PI / 6);
   const SIN = Math.sin(Math.PI / 6);
@@ -52,11 +60,11 @@
     const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
     if (!offCtx) return;
 
-    // Persistent accumulation buffer -- evolves continuously
-    const buffer = new Float32Array(GRID_W * GRID_H);
-    let bufferMax = 1;
+    // Per-cell state: last visit timestamp (0 = never) and decaying visit counter
+    const lastVisit = new Float32Array(GRID_W * GRID_H);
+    const visitCount = new Float32Array(GRID_W * GRID_H);
+    let maxVisitCount = 1;
     let attractorPos = { ...get(attractorState) };
-    // Pre-allocated once; reused every frame to avoid GC churn
     const imgData = offCtx.createImageData(GRID_W, GRID_H);
 
     function readAccentColor(): string {
@@ -64,9 +72,9 @@
         .getPropertyValue('--color-accent').trim() || '#34d399';
     }
 
-    let [r, g, b] = parseAccentRgb(readAccentColor());
+    let [ar, ag, ab] = parseAccentRgb(readAccentColor());
 
-    const mo = new MutationObserver(() => { [r, g, b] = parseAccentRgb(readAccentColor()); });
+    const mo = new MutationObserver(() => { [ar, ag, ab] = parseAccentRgb(readAccentColor()); });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     function resize() {
@@ -74,6 +82,8 @@
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Preserve chunky grid when upscaling; must be reapplied after setTransform
+      ctx.imageSmoothingEnabled = false;
     }
 
     const ro = new ResizeObserver(resize);
@@ -83,70 +93,71 @@
     let throbEma = 0.5;
     let lastTime = performance.now();
 
-    // RAF passes a DOMHighResTimeStamp; we use it for frame-rate-independent scaling
     function draw(now: number) {
       if (!offCtx) return;
-      // dt is a frame multiplier (1.0 = 60fps), capped to avoid large jumps after tab wake
       const dt = Math.min((now - lastTime) / (1000 / 60), 4);
       lastTime = now;
 
       const celestial = get(celestialState);
       const steps = Math.round(STEPS_PER_FRAME * dt);
 
+      // Step the attractor, recording last-visit time and incrementing density
       for (let i = 0; i < steps; i++) {
         attractorPos = stepAttractor(attractorPos, celestial);
         const { px, py } = projectPoint(attractorPos.x, attractorPos.y, attractorPos.z);
         if (px >= 0 && px < GRID_W && py >= 0 && py < GRID_H) {
-          buffer[py * GRID_W + px] += 1;
+          const idx = py * GRID_W + px;
+          lastVisit[idx] = now;
+          visitCount[idx] += 1;
         }
       }
 
-      // Decay scaled to elapsed time so half-life is display-rate independent
+      // Decay density and track running max for normalization
       const decay = Math.pow(DECAY, dt);
       let newMax = 0;
-      for (let i = 0; i < buffer.length; i++) {
-        buffer[i] *= decay;
-        if (buffer[i] > newMax) newMax = buffer[i];
+      for (let i = 0; i < visitCount.length; i++) {
+        visitCount[i] *= decay;
+        if (visitCount[i] > newMax) newMax = visitCount[i];
       }
-      if (newMax > 0) bufferMax = newMax;
+      maxVisitCount = Math.max(newMax, 1);
+      const logMax = Math.log(1 + maxVisitCount);
 
-      // Render density to pre-allocated ImageData with heatmap color gradient
+      // Render each cell: brightness bell-curve on recency, hue lerp on density (inverted)
       const data = imgData.data;
-      const logMax = Math.log(1 + bufferMax);
-
-      for (let i = 0; i < buffer.length; i++) {
+      for (let i = 0; i < lastVisit.length; i++) {
         const idx = i * 4;
-        const density = buffer[i] > 0 ? Math.log(1 + buffer[i]) / logMax : 0;
-        if (density < 0.04) {
-          // Zero out stale pixels from previous frames
+        const visited = lastVisit[i];
+        if (visited === 0) {
           data[idx] = data[idx + 1] = data[idx + 2] = data[idx + 3] = 0;
           continue;
         }
-        if (density < 0.5) {
-          // Transparent dark → full accent color
-          const t = (density - 0.04) / 0.46;
-          data[idx]     = Math.round(r * t);
-          data[idx + 1] = Math.round(g * t);
-          data[idx + 2] = Math.round(b * t);
-          data[idx + 3] = Math.round(t * 130);
-        } else {
-          // Accent color → bright near-white (hot core)
-          const t = (density - 0.5) / 0.5;
-          data[idx]     = Math.round(r + (255 - r) * t * 0.7);
-          data[idx + 1] = Math.round(g + (255 - g) * t * 0.7);
-          data[idx + 2] = Math.round(b + (255 - b) * t * 0.7);
-          data[idx + 3] = Math.round(130 + t * 125);
+        const age = now - visited;
+        if (age >= MAX_AGE_MS) {
+          data[idx] = data[idx + 1] = data[idx + 2] = data[idx + 3] = 0;
+          continue;
         }
+        const t = age / MAX_AGE_MS;
+        const brightness = 4 * t * (1 - t); // 0 at t=0, peak 1 at t=0.5, 0 at t=1
+        const density = visitCount[i] > 0 ? Math.log(1 + visitCount[i]) / logMax : 0;
+
+        // Inverted hue: low density = accent, high density = muted grey
+        const cr = ar + (MUTED_R - ar) * density;
+        const cg = ag + (MUTED_G - ag) * density;
+        const cb = ab + (MUTED_B - ab) * density;
+
+        data[idx]     = Math.round(cr * brightness);
+        data[idx + 1] = Math.round(cg * brightness);
+        data[idx + 2] = Math.round(cb * brightness);
+        data[idx + 3] = Math.round(brightness * ALPHA_SCALE);
       }
 
       offCtx.putImageData(imgData, 0, 0);
 
-      // Draw offscreen → main canvas (blur applied via CSS filter on element)
       const width = window.innerWidth;
       const height = window.innerHeight;
       ctx.clearRect(0, 0, width, height);
 
-      // Throb via ctx.globalAlpha -- avoids DOM style recalculation each frame
+      // Throb via ctx.globalAlpha -- avoids DOM style recalculation
       const throbAlpha = Math.pow(THROB_SMOOTH, dt);
       const zNorm = Math.max(0, Math.min(1, (attractorPos.z - Z_MIN) / (Z_MAX - Z_MIN)));
       throbEma = throbEma * throbAlpha + zNorm * (1 - throbAlpha);
@@ -170,5 +181,5 @@
 <canvas
   bind:this={canvas}
   class="fixed inset-0 w-full h-full pointer-events-none"
-  style="z-index: 0; filter: blur(20px);"
+  style="z-index: 0; image-rendering: pixelated;"
 ></canvas>
