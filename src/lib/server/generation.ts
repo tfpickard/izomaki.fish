@@ -126,9 +126,8 @@ function looksLikeText(line: string): boolean {
 
 function sanitizeAscii(raw: string): string {
   return raw
-    .replace(/^```[\w]*\n?/gm, '')
-    .replace(/\n?```$/gm, '')
     .split('\n')
+    .filter(line => !/^```[\w]*$/.test(line.trim()))
     .filter(line => !looksLikeText(line))
     .slice(0, 50)
     .map(line => line.slice(0, 80))
@@ -140,11 +139,17 @@ async function generateWithRetry(
   makeRequest: () => Promise<Anthropic.Message>,
   retries = 2
 ): Promise<string> {
-  for (let i = 0; i < retries; i++) {
-    const ascii = sanitizeAscii(extractText(await makeRequest()));
-    if (ascii.split('\n').length >= 3) return ascii;
+  const totalAttempts = retries + 1;
+  for (let i = 0; i < totalAttempts; i++) {
+    try {
+      const ascii = sanitizeAscii(extractText(await makeRequest()));
+      const nonEmptyLines = ascii.split('\n').filter(l => l.trim().length > 0).length;
+      if (nonEmptyLines >= 3 || i === totalAttempts - 1) return ascii;
+    } catch (err) {
+      if (i === totalAttempts - 1) throw err;
+    }
   }
-  return sanitizeAscii(extractText(await makeRequest()));
+  throw new Error('generateWithRetry exhausted all attempts');
 }
 
 function generateRandomWeights(): StateVector {
