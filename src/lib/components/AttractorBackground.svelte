@@ -10,8 +10,8 @@
   const STEPS_PER_FRAME = 300;
   // Per-frame decay: half-life ~23s at 60fps
   const DECAY = 0.9995;
-  // Throb period ~8s
-  const THROB_RATE = 0.0008;
+  // EMA smoothing for throb: half-life ~6s at 60fps
+  const THROB_SMOOTH = 0.998;
 
   const COS = Math.cos(Math.PI / 6);
   const SIN = Math.sin(Math.PI / 6);
@@ -78,7 +78,7 @@
     ro.observe(document.documentElement);
     resize();
 
-    const startTime = Date.now();
+    let throbEma = 0.5;
 
     function draw() {
       if (!offCtx) return;
@@ -136,9 +136,10 @@
       ctx.clearRect(0, 0, width, height);
       ctx.drawImage(offscreen, 0, 0, width, height);
 
-      // Throb: slow opacity pulse on the canvas element
-      const now = Date.now();
-      canvas.style.opacity = String(0.7 + 0.3 * Math.sin((now - startTime) * THROB_RATE));
+      // Throb: smooth EMA of attractor z-coordinate drives opacity
+      const zNorm = Math.max(0, Math.min(1, (attractorPos.z - Z_MIN) / (Z_MAX - Z_MIN)));
+      throbEma = throbEma * THROB_SMOOTH + zNorm * (1 - THROB_SMOOTH);
+      canvas.style.opacity = String(0.65 + 0.35 * throbEma);
 
       rafId = requestAnimationFrame(draw);
     }
