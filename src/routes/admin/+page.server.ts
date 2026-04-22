@@ -20,6 +20,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     SELECT id, created_at, generation_count, last_generated_at, next_generation_at
     FROM creatures
     WHERE user_id = ${user.id}
+    ORDER BY display_order ASC
     LIMIT 1
   `;
 

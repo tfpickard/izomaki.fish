@@ -14,7 +14,7 @@
     avgFramesPerCreature: 0
   });
 
-  const VISIBLE = 6;
+  const VISIBLE = 5;
 
   let order: number[] = $state([]);
   let cursor = $state(0);
@@ -67,10 +67,9 @@
   const positions = [
     { left: '12%', top: '60%' },
     { left: '28%', top: '30%' },
-    { left: '55%', top: '70%' },
+    { left: '55%', top: '75%' },
     { left: '70%', top: '25%' },
-    { left: '85%', top: '55%' },
-    { left: '42%', top: '45%' }
+    { left: '88%', top: '55%' }
   ];
 
   function visibleCreatures(): LandingCreatureData[] {
@@ -97,7 +96,7 @@
     </div>
   {/each}
 
-  <div class="flex flex-col items-center justify-center w-full h-full gap-4">
+  <div class="relative z-10 flex flex-col items-center justify-center w-full h-full gap-4">
     <a
       href="/auth/github"
       class="border border-[var(--color-border)] hover:border-[var(--color-fg-dim)] text-[var(--color-fg)] font-mono text-sm px-6 py-2 transition-colors"
